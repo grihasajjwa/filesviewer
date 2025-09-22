@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { FileItem } from "./FileManager";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AdminPanelProps {
   onFileUpload: (files: FileItem[]) => void;
@@ -15,31 +16,55 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
 
     setIsUploading(true);
     
-    // Simulate file upload process
-    setTimeout(() => {
-      const newFiles: FileItem[] = Array.from(files).map((file, index) => ({
-        id: `upload-${Date.now()}-${index}`,
-        name: file.name,
-        type: getFileType(file.name),
-        size: file.size,
-        uploadedAt: new Date().toISOString().split('T')[0],
-        url: URL.createObjectURL(file),
-      }));
+    try {
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+        
+        const { data, error } = await supabase.storage
+          .from('files')
+          .upload(fileName, file);
 
+        if (error) throw error;
+
+        // Get the public URL for the uploaded file
+        const { data: { publicUrl } } = supabase.storage
+          .from('files')
+          .getPublicUrl(fileName);
+
+        return {
+          id: `upload-${Date.now()}-${Math.random().toString(36).substring(2)}`,
+          name: file.name,
+          type: getFileType(file.name),
+          size: file.size,
+          uploadedAt: new Date().toISOString().split('T')[0],
+          url: publicUrl,
+        };
+      });
+
+      const newFiles: FileItem[] = await Promise.all(uploadPromises);
       onFileUpload(newFiles);
-      setIsUploading(false);
       
       toast({
         title: "Upload Successful",
         description: `${files.length} file(s) uploaded successfully`,
       });
-    }, 1500);
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({
+        title: "Upload Failed",
+        description: "Failed to upload files. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleDriveLinkSubmit = () => {

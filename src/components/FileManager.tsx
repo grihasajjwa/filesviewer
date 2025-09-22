@@ -2,8 +2,10 @@ import { useState } from "react";
 import { FileList } from "./FileList";
 import { FilePreview } from "./FilePreview";
 import { AdminPanel } from "./AdminPanel";
+import { Auth } from "./Auth";
 import { Button } from "@/components/ui/button";
 import { User, Shield } from "lucide-react";
+import { User as SupabaseUser, Session } from "@supabase/supabase-js";
 
 export interface FileItem {
   id: string;
@@ -63,6 +65,8 @@ export const FileManager = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [files, setFiles] = useState<FileItem[]>(mockFiles);
   const [searchQuery, setSearchQuery] = useState("");
+  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
 
   const filteredFiles = files.filter(file =>
     file.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -71,6 +75,24 @@ export const FileManager = () => {
   const handleFileUpload = (newFiles: FileItem[]) => {
     setFiles(prev => [...newFiles, ...prev]);
   };
+
+  const handleAuthChange = (newUser: SupabaseUser | null, newSession: Session | null) => {
+    setUser(newUser);
+    setSession(newSession);
+    // Reset admin status when user changes
+    if (!newUser) {
+      setIsAdmin(false);
+    }
+  };
+
+  // Show auth screen if not logged in
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-surface flex items-center justify-center p-4">
+        <Auth user={user} onAuthChange={handleAuthChange} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-surface">
@@ -85,6 +107,7 @@ export const FileManager = () => {
           </div>
           
           <div className="flex items-center space-x-4">
+            <Auth user={user} onAuthChange={handleAuthChange} />
             <Button
               variant={isAdmin ? "default" : "secondary"}
               size="sm"
