@@ -129,5 +129,33 @@
 
   body {
     @apply bg-background text-foreground;
+    /* Prevent iOS text-size-adjust issues and provide cross-browser support */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  /* Safari requires -webkit-user-select in some versions */
+  .select-none {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+
+  /* Safer accordion animation that avoids animating height (which triggers layout). Use transform+opacity instead. */
+  @keyframes accordion-fade-grow {
+    from {
+      transform: scaleY(0.98);
+      opacity: 0;
+    }
+    to {
+      transform: scaleY(1);
+      opacity: 1;
+    }
+  }
+
+  .accordion-animate {
+    transform-origin: top;
+    animation: accordion-fade-grow 180ms ease-out;
   }
 }

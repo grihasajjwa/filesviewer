@@ -14,7 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      files: {
+        Row: {
+          bucket_name: string
+          created_at: string
+          file_path: string
+          id: string
+          name: string
+          size: number
+          thumbnail: string | null
+          type: string
+          updated_at: string
+          url: string
+          user_id: string
+          drive_link?: string | null; // Added optional drive_link property
+        }
+        Insert: {
+          bucket_name?: string
+          created_at?: string
+          file_path: string
+          id?: string
+          name: string
+          size: number
+          thumbnail?: string | null
+          type: string
+          updated_at?: string
+          url: string
+          user_id: string
+          drive_link?: string | null;
+        }
+        Update: {
+          bucket_name?: string
+          created_at?: string
+          file_path?: string
+          id?: string
+          name?: string
+          size?: number
+          thumbnail?: string | null
+          type?: string
+          updated_at?: string
+          url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -44,7 +87,7 @@ export type Tables<
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

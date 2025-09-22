@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { FileList } from "./FileList";
 import { FilePreview } from "./FilePreview";
 import { AdminPanel } from "./AdminPanel";
@@ -6,6 +6,9 @@ import { Auth } from "./Auth";
 import { Button } from "@/components/ui/button";
 import { User, Shield } from "lucide-react";
 import { User as SupabaseUser, Session } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import DevDebugPanel from "./DevDebugPanel";
 
 export interface FileItem {
   id: string;
@@ -15,6 +18,7 @@ export interface FileItem {
   uploadedAt: string;
   url: string;
   thumbnail?: string;
+  drive_link?: string;
 }
 
 const mockFiles: FileItem[] = [
@@ -63,17 +67,142 @@ const mockFiles: FileItem[] = [
 export const FileManager = () => {
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [files, setFiles] = useState<FileItem[]>(mockFiles);
+  const [files, setFiles] = useState<FileItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+  // Ref to prevent concurrent fetches
+  const fetchInProgressRef = useRef(false);
+  // Ref to ensure we show the network/CORS error only once
+  const networkErrorShownRef = useRef(false);
 
-  const filteredFiles = files.filter(file =>
-    file.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredFiles = useMemo(() => {
+    return files.filter(file =>
+      file.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [files, searchQuery]);
+
+  const fetchFiles = async (userId: string) => {
+    if (fetchInProgressRef.current) return;
+    fetchInProgressRef.current = true;
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('files')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching files:', error);
+        // Show the error toast only once to avoid spamming the user
+        if (!networkErrorShownRef.current) {
+          networkErrorShownRef.current = true;
+          toast.error(error.message || 'Failed to fetch files (Supabase error)');
+        }
+        return;
+      }
+
+      const formattedFiles: FileItem[] = data.map(file => {
+        if (file.drive_link) {
+          const fileId = extractDriveFileId(file.drive_link);
+          return {
+            id: file.id,
+            name: file.name, // Use the original name stored in the database
+            type: file.type,
+            size: file.size,
+            uploadedAt: new Date(file.created_at).toISOString().split('T')[0],
+            url: `https://drive.google.com/uc?id=${fileId}&export=download`, // Construct the Google Drive download URL
+            thumbnail: file.thumbnail,
+            drive_link: file.drive_link,
+          };
+        }
+        return {
+          id: file.id,
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          uploadedAt: new Date(file.created_at).toISOString().split('T')[0],
+          url: file.url,
+          thumbnail: file.thumbnail,
+        };
+      });
+
+      setFiles(formattedFiles);
+    } catch (err: any) {
+      console.error('Error fetching files:', err);
+
+      // Detect network/CORS errors that surface as a TypeError: Failed to fetch
+      const isNetworkError =
+        err instanceof TypeError ||
+        (err && typeof err.message === 'string' && err.message.includes('Failed to fetch'));
+
+      if (isNetworkError) {
+        // Provide a clear developer hint in console and show a toast with guidance only once
+        console.error(
+          'Likely a network/CORS issue. Check Supabase project settings: allowed origins (CORS) and redirect URLs.\n' +
+            'Ensure your dev origin (eg. http://localhost:5173 or http://127.0.0.1:5173) is added, and that the publishable anon key in client.ts is correct.'
+        );
+        if (!networkErrorShownRef.current) {
+          networkErrorShownRef.current = true;
+          toast.error(
+            'Network error fetching files — check Supabase CORS/origins and anon key. Using local mock files as a fallback.'
+          );
+        }
+
+        // Use mock files as a safe development fallback so the UI remains usable
+        // Only set mock files if we don't already have files
+        setFiles(prev => (prev.length === 0 ? mockFiles : prev));
+      } else {
+        if (!networkErrorShownRef.current) {
+          networkErrorShownRef.current = true;
+          toast.error('Failed to fetch files');
+        }
+      }
+    } finally {
+      fetchInProgressRef.current = false;
+      setLoading(false);
+    }
+  };
+
+  const extractDriveFileId = (url: string) => {
+    const regex = /(?:https?:\/\/)?(?:www\.)?drive\.google\.com\/(?:file\/d\/|open\?id=)([\w-]+)/;
+    const match = url.match(regex);
+    return match ? match[1] : null;
+  };
+
+  const fetchDriveMetadata = async (fileId) => {
+    const apiKey = "YOUR_GOOGLE_DRIVE_API_KEY"; // Replace with your API key
+    const url = `https://www.googleapis.com/drive/v3/files/${fileId}?fields=name,mimeType,size&key=${apiKey}`;
+
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Error fetching metadata: ${response.statusText}`);
+      }
+      const metadata = await response.json();
+      return {
+        name: metadata.name,
+        type: metadata.mimeType,
+        size: parseInt(metadata.size, 10),
+        url: `https://drive.google.com/uc?id=${fileId}&export=download`,
+      };
+    } catch (error) {
+      console.error("Failed to fetch Google Drive metadata:", error);
+      return null;
+    }
+  };
 
   const handleFileUpload = (newFiles: FileItem[]) => {
-    setFiles(prev => [...newFiles, ...prev]);
+    setFiles((prev) => {
+      const updatedFiles = [...newFiles, ...prev];
+      // Prevent redundant updates by comparing the new and previous files
+      if (JSON.stringify(updatedFiles) !== JSON.stringify(prev)) {
+        return updatedFiles;
+      }
+      return prev;
+    });
   };
 
   const handleAuthChange = (newUser: SupabaseUser | null, newSession: Session | null) => {
@@ -82,8 +211,64 @@ export const FileManager = () => {
     // Reset admin status when user changes
     if (!newUser) {
       setIsAdmin(false);
+      setFiles([]);
+    } else {
+      // Fetch files when user logs in
+      fetchFiles(newUser.id);
     }
   };
+
+  const handleDelete = async (fileId: string) => {
+    if (!isAdmin) {
+      toast.error('Only admins can delete files.');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('files')
+        .delete()
+        .eq('id', fileId);
+
+      if (error) {
+        console.error('Error deleting file:', error);
+        toast.error('Failed to delete file.');
+        return;
+      }
+
+      toast.success('File deleted successfully.');
+
+      // Refresh the file list and reset the right-side viewer
+      if (user) {
+        await fetchFiles(user.id);
+      }
+      setSelectedFile(null); // Clear the selected file to refresh the viewer
+    } catch (err) {
+      console.error('Unexpected error deleting file:', err);
+      toast.error('An unexpected error occurred.');
+    }
+  };
+
+  // Initial auth check
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const user = session?.user || null;
+      setUser(user);
+      setSession(session);
+      if (user) {
+        fetchFiles(user.id);
+      } else {
+        setLoading(false);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const user = session?.user || null;
+      handleAuthChange(user, session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Show auth screen if not logged in
   if (!user) {
@@ -96,6 +281,7 @@ export const FileManager = () => {
 
   return (
     <div className="min-h-screen bg-gradient-surface">
+      {import.meta.env.DEV && <DevDebugPanel />}
       {/* Header */}
       <header className="bg-card border-b border-border shadow-sm">
         <div className="flex items-center justify-between px-6 py-4">
@@ -121,16 +307,15 @@ export const FileManager = () => {
         </div>
       </header>
 
-      <div className="flex h-[calc(100vh-73px)]">
+      <div className="flex h-[calc(100vh-73px)] overflow-hidden">
         {/* Left Panel - File List */}
-        <div className="w-1/3 border-r border-border bg-card">
+        <div className="w-1/3 border-r border-border bg-card overflow-y-auto">
           <div className="h-full flex flex-col">
             {isAdmin && (
               <div className="border-b border-border">
                 <AdminPanel onFileUpload={handleFileUpload} />
               </div>
             )}
-            
             <FileList
               files={filteredFiles}
               selectedFile={selectedFile}
@@ -142,8 +327,12 @@ export const FileManager = () => {
         </div>
 
         {/* Right Panel - File Preview */}
-        <div className="flex-1 bg-surface">
-          <FilePreview file={selectedFile} />
+        <div className="flex-1 bg-surface overflow-y-auto">
+          <FilePreview 
+            file={selectedFile} 
+            onDelete={handleDelete} 
+            isAdmin={isAdmin} // Pass isAdmin prop to FilePreview
+          />
         </div>
       </div>
     </div>

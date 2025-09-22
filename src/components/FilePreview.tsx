@@ -3,12 +3,15 @@ import { Download, FileText, Eye, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatFileSize } from "@/lib/fileUtils";
+import { saveAs } from "file-saver";
 
 interface FilePreviewProps {
   file: FileItem | null;
+  onDelete: (id: string) => void;
+  isAdmin: boolean; // Add isAdmin prop
 }
 
-export const FilePreview = ({ file }: FilePreviewProps) => {
+export const FilePreview = ({ file, onDelete, isAdmin }: FilePreviewProps) => {
   if (!file) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -21,7 +24,65 @@ export const FilePreview = ({ file }: FilePreviewProps) => {
     );
   }
 
+  const extractDriveFileId = (url: string) => {
+    const regex = /[-\w]{25,}/;
+    const matches = url.match(regex);
+    return matches ? matches[0] : null;
+  };
+
+  const handleDelete = (id: string) => {
+    // Call the onDelete prop function passed from the parent component
+    onDelete(id);
+  };
+
   const renderPreview = () => {
+    if (file.url.includes("drive.google.com")) {
+      return (
+        <div className="h-full bg-card rounded-lg border border-border overflow-hidden">
+          <div className="h-full flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-border bg-muted/30">
+              <div className="flex items-center space-x-2">
+                <FileText className="w-5 h-5 text-primary" />
+                <span className="font-medium text-sm">Google Drive File</span>
+              </div>
+              <div className="flex space-x-2">
+                <Button 
+                  variant="secondary" 
+                  size="sm"
+                  onClick={() => window.open(file.url, '_blank')}
+                >
+                  <ExternalLink className="w-4 h-4 mr-1" />
+                  Open
+                </Button>
+                {isAdmin && (
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    onClick={() => handleDelete(file.id)}
+                  >
+                    Delete
+                  </Button>
+                )}
+              </div>
+            </div>
+            <div className="flex-1 bg-muted/10 p-4 overflow-auto">
+              {file.url.includes("drive.google.com") ? (
+                <iframe
+                  src={`https://drive.google.com/file/d/${extractDriveFileId(file.url)}/preview`}
+                  title="Google Drive File Preview"
+                  className="w-full h-full border-none"
+                  style={{ height: '100vh', overflow: 'auto' }}
+                  allow="autoplay"
+                ></iframe>
+              ) : (
+                <p className="text-center text-muted-foreground">Preview not available for Google Drive files. Use the Open button to view the file.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     switch (file.type) {
       case "pdf":
         return (
@@ -41,17 +102,23 @@ export const FilePreview = ({ file }: FilePreviewProps) => {
                     <ExternalLink className="w-4 h-4 mr-1" />
                     Open
                   </Button>
-                  <Button variant="secondary" size="sm">
-                    <Download className="w-4 h-4 mr-1" />
-                    Download
-                  </Button>
+                  {isAdmin && (
+                    <Button 
+                      variant="destructive" 
+                      size="sm" 
+                      onClick={() => handleDelete(file.id)}
+                    >
+                      Delete
+                    </Button>
+                  )}
                 </div>
               </div>
-              <div className="flex-1 bg-muted/10">
+              <div className="flex-1 bg-muted/10 overflow-auto">
                 <iframe
                   src={file.url}
                   className="w-full h-full border-0"
                   title={file.name}
+                  style={{ height: '100%', width: '100%', minHeight: '842px', minWidth: '595px' }} // A4 dimensions in pixels
                 />
               </div>
             </div>
@@ -76,10 +143,15 @@ export const FilePreview = ({ file }: FilePreviewProps) => {
                     <ExternalLink className="w-4 h-4 mr-1" />
                     Open
                   </Button>
-                  <Button variant="secondary" size="sm">
-                    <Download className="w-4 h-4 mr-1" />
-                    Download
-                  </Button>
+                  {isAdmin && (
+                    <Button 
+                      variant="destructive" 
+                      size="sm" 
+                      onClick={() => handleDelete(file.id)}
+                    >
+                      Delete
+                    </Button>
+                  )}
                 </div>
               </div>
               <div className="flex-1 bg-muted/10 p-4 overflow-auto">
@@ -111,7 +183,19 @@ export const FilePreview = ({ file }: FilePreviewProps) => {
                     <ExternalLink className="w-4 h-4" />
                     <span>Open External</span>
                   </Button>
-                  <Button variant="secondary" size="sm" className="flex items-center space-x-2">
+                  <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    className="flex items-center space-x-2"
+                    onClick={() => {
+                      const downloadUrl = file.drive_link || file.url;
+                      if (downloadUrl) {
+                        saveAs(downloadUrl, file.name || "download");
+                      } else {
+                        console.error("No valid download URL found for the file.");
+                      }
+                    }}
+                  >
                     <Download className="w-4 h-4" />
                     <span>Download</span>
                   </Button>
@@ -143,6 +227,14 @@ export const FilePreview = ({ file }: FilePreviewProps) => {
               variant="secondary"
               size="sm"
               className="flex items-center space-x-2"
+              onClick={() => {
+                const downloadUrl = file.drive_link || file.url;
+                if (downloadUrl) {
+                  saveAs(downloadUrl, file.name || "download");
+                } else {
+                  console.error("No valid download URL found for the file.");
+                }
+              }}
             >
               <Download className="w-4 h-4" />
               <span>Download</span>

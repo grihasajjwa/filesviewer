@@ -91,6 +91,16 @@ export const FileList = ({
                         {new Date(file.uploadedAt).toLocaleDateString()}
                       </span>
                     </div>
+                    {file.drive_link && (
+                      <a
+                        href={file.drive_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-primary underline"
+                      >
+                        Open in Google Drive
+                      </a>
+                    )}
                   </div>
                 </div>
               </Button>
