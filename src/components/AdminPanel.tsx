@@ -110,7 +110,7 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
         </div>
 
         {/* File Upload */}
-        <div>
+        <div className="space-y-2">
           <label className="block">
             <input
               type="file"
@@ -127,6 +127,26 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
             >
               <Upload className="w-4 h-4 mr-2" />
               {isUploading ? "Uploading..." : "Upload Files"}
+            </Button>
+          </label>
+          
+          <label className="block">
+            <input
+              type="file"
+              multiple
+              {...({ webkitdirectory: "" } as any)}
+              onChange={handleFileUpload}
+              className="sr-only"
+              disabled={isUploading}
+            />
+            <Button
+              variant="secondary"
+              size="sm"
+              className="w-full justify-start"
+              disabled={isUploading}
+            >
+              <FolderOpen className="w-4 h-4 mr-2" />
+              {isUploading ? "Uploading..." : "Upload Folder"}
             </Button>
           </label>
         </div>

@@ -26,23 +26,33 @@ export const FilePreview = ({ file }: FilePreviewProps) => {
       case "pdf":
         return (
           <div className="h-full bg-card rounded-lg border border-border overflow-hidden">
-            <div className="h-full flex items-center justify-center">
-              <div className="text-center">
-                <FileText className="w-16 h-16 mx-auto mb-4 text-destructive" />
-                <h3 className="text-lg font-medium mb-2">PDF Document</h3>
-                <p className="text-muted-foreground mb-6">
-                  PDF viewer would be integrated here
-                </p>
-                <div className="flex justify-center space-x-3">
-                  <Button size="sm" className="flex items-center space-x-2">
-                    <Eye className="w-4 h-4" />
-                    <span>Open PDF</span>
+            <div className="h-full flex flex-col">
+              <div className="flex items-center justify-between p-4 border-b border-border bg-muted/30">
+                <div className="flex items-center space-x-2">
+                  <FileText className="w-5 h-5 text-destructive" />
+                  <span className="font-medium text-sm">PDF Viewer</span>
+                </div>
+                <div className="flex space-x-2">
+                  <Button 
+                    variant="secondary" 
+                    size="sm"
+                    onClick={() => window.open(file.url, '_blank')}
+                  >
+                    <ExternalLink className="w-4 h-4 mr-1" />
+                    Open
                   </Button>
-                  <Button variant="secondary" size="sm" className="flex items-center space-x-2">
-                    <Download className="w-4 h-4" />
-                    <span>Download</span>
+                  <Button variant="secondary" size="sm">
+                    <Download className="w-4 h-4 mr-1" />
+                    Download
                   </Button>
                 </div>
+              </div>
+              <div className="flex-1 bg-muted/10">
+                <iframe
+                  src={file.url}
+                  className="w-full h-full border-0"
+                  title={file.name}
+                />
               </div>
             </div>
           </div>
@@ -51,13 +61,36 @@ export const FilePreview = ({ file }: FilePreviewProps) => {
       case "image":
         return (
           <div className="h-full bg-card rounded-lg border border-border overflow-hidden">
-            <div className="h-full flex items-center justify-center p-6">
-              <div className="max-w-full max-h-full">
-                <img
-                  src={file.url}
-                  alt={file.name}
-                  className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
-                />
+            <div className="h-full flex flex-col">
+              <div className="flex items-center justify-between p-4 border-b border-border bg-muted/30">
+                <div className="flex items-center space-x-2">
+                  <Eye className="w-5 h-5 text-primary" />
+                  <span className="font-medium text-sm">Image Preview</span>
+                </div>
+                <div className="flex space-x-2">
+                  <Button 
+                    variant="secondary" 
+                    size="sm"
+                    onClick={() => window.open(file.url, '_blank')}
+                  >
+                    <ExternalLink className="w-4 h-4 mr-1" />
+                    Open
+                  </Button>
+                  <Button variant="secondary" size="sm">
+                    <Download className="w-4 h-4 mr-1" />
+                    Download
+                  </Button>
+                </div>
+              </div>
+              <div className="flex-1 bg-muted/10 p-4 overflow-auto">
+                <div className="h-full flex items-center justify-center">
+                  <img
+                    src={file.url}
+                    alt={file.name}
+                    className="max-w-full max-h-full object-contain rounded-lg shadow-lg cursor-zoom-in"
+                    onClick={() => window.open(file.url, '_blank')}
+                  />
+                </div>
               </div>
             </div>
           </div>
