@@ -66,21 +66,17 @@ export const FilePreview = ({ file, onDelete, isAdmin }: FilePreviewProps) => {
               </div>
             </div>
             <div className="flex-1 bg-muted/10 p-4 overflow-auto">
-              <div className="h-full flex items-center justify-center">
-                <div className="text-center">
-                  <FileText className="w-16 h-16 mx-auto mb-4 text-primary" />
-                  <h3 className="text-lg font-medium mb-2">Google Drive File</h3>
-                  <p className="text-muted-foreground mb-6">
-                    Preview not available for Google Drive files due to security restrictions.
-                  </p>
-                  <Button 
-                    onClick={() => window.open(file.url, '_blank')}
-                    className="flex items-center space-x-2"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                    <span>Open in Google Drive</span>
-                  </Button>
-                </div>
+              <div className="h-full w-full">
+                <iframe
+                  src={`https://drive.google.com/file/d/${extractDriveFileId(file.url)}/preview`}
+                  title="Google Drive File Preview"
+                  className="w-full h-full border-none rounded-lg"
+                  style={{ height: '100%', minHeight: '600px' }}
+                  allow="autoplay"
+                  onError={() => {
+                    console.log('Google Drive preview failed to load due to CSP restrictions');
+                  }}
+                />
               </div>
             </div>
           </div>
