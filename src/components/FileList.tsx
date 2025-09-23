@@ -1,8 +1,9 @@
-import { Search, File, FileText, Image, FileSpreadsheet, Presentation } from "lucide-react";
+import { Search, File, FileText, Image, FileSpreadsheet, Presentation, Folder, Globe } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { FileItem } from "./FileManager";
 import { formatFileSize } from "@/lib/fileUtils";
+import { StatusBadge } from "./StatusBadge";
 
 interface FileListProps {
   files: FileItem[];
@@ -24,9 +25,18 @@ const getFileIcon = (type: string) => {
       return <FileSpreadsheet className="w-5 h-5 text-success" />;
     case "presentation":
       return <Presentation className="w-5 h-5 text-warning" />;
+    case "folder":
+      return <Folder className="w-5 h-5 text-blue-500" />;
     default:
       return <File className="w-5 h-5 text-muted-foreground" />;
   }
+};
+
+const getBadgeType = (file: FileItem) => {
+  if (file.drive_link) return 'drive';
+  if (file.drive_folder_link) return 'folder';
+  if (file.url && file.url.startsWith('http') && !file.url.includes('supabase')) return 'internet';
+  return 'uploaded';
 };
 
 export const FileList = ({
@@ -79,12 +89,15 @@ export const FileList = ({
                     {getFileIcon(file.type)}
                   </div>
                   <div className="flex-1 min-w-0 text-left">
-                    <p className="font-medium text-sm truncate">
-                      {file.name}
-                    </p>
+                    <div className="flex items-center space-x-2 mb-1">
+                      <p className="font-medium text-sm truncate">
+                        {file.name}
+                      </p>
+                      <StatusBadge type={getBadgeType(file)} />
+                    </div>
                     <div className="flex items-center space-x-2 mt-1">
                       <span className="text-xs text-muted-foreground">
-                        {formatFileSize(file.size)}
+                        {file.type === 'folder' ? 'Folder' : formatFileSize(file.size)}
                       </span>
                       <span className="text-xs text-muted-foreground">•</span>
                       <span className="text-xs text-muted-foreground">
@@ -96,9 +109,21 @@ export const FileList = ({
                         href={file.drive_link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-primary underline"
+                        className="text-xs text-primary underline mt-1 block hover:text-primary/80"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         Open in Google Drive
+                      </a>
+                    )}
+                    {file.drive_folder_link && (
+                      <a
+                        href={file.drive_folder_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-primary underline mt-1 block hover:text-primary/80"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Open Folder in Google Drive
                       </a>
                     )}
                   </div>

@@ -18,7 +18,10 @@ export type Database = {
         Row: {
           bucket_name: string
           created_at: string
+          drive_folder_link: string | null
+          drive_link: string | null
           file_path: string
+          folder_name: string | null
           id: string
           name: string
           size: number
@@ -27,12 +30,14 @@ export type Database = {
           updated_at: string
           url: string
           user_id: string
-          drive_link?: string | null; // Added optional drive_link property
         }
         Insert: {
           bucket_name?: string
           created_at?: string
+          drive_folder_link?: string | null
+          drive_link?: string | null
           file_path: string
+          folder_name?: string | null
           id?: string
           name: string
           size: number
@@ -41,17 +46,49 @@ export type Database = {
           updated_at?: string
           url: string
           user_id: string
-          drive_link?: string | null;
         }
         Update: {
           bucket_name?: string
           created_at?: string
+          drive_folder_link?: string | null
+          drive_link?: string | null
           file_path?: string
+          folder_name?: string | null
           id?: string
           name?: string
           size?: number
           thumbnail?: string | null
           type?: string
+          updated_at?: string
+          url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      internet_images: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          title: string
+          updated_at: string
+          url: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          title: string
+          updated_at?: string
+          url: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          title?: string
           updated_at?: string
           url?: string
           user_id?: string
@@ -87,7 +124,7 @@ export type Tables<
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

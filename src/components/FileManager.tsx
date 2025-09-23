@@ -19,6 +19,8 @@ export interface FileItem {
   url: string;
   thumbnail?: string;
   drive_link?: string;
+  drive_folder_link?: string;
+  folder_name?: string;
 }
 
 const mockFiles: FileItem[] = [
@@ -109,13 +111,26 @@ export const FileManager = () => {
           const fileId = extractDriveFileId(file.drive_link);
           return {
             id: file.id,
-            name: file.name, // Use the original name stored in the database
+            name: file.name,
             type: file.type,
             size: file.size,
             uploadedAt: new Date(file.created_at).toISOString().split('T')[0],
-            url: `https://drive.google.com/uc?id=${fileId}&export=download`, // Construct the Google Drive download URL
+            url: `https://drive.google.com/uc?id=${fileId}&export=download`,
             thumbnail: file.thumbnail,
             drive_link: file.drive_link,
+          };
+        }
+        if (file.drive_folder_link) {
+          return {
+            id: file.id,
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            uploadedAt: new Date(file.created_at).toISOString().split('T')[0],
+            url: file.drive_folder_link,
+            thumbnail: file.thumbnail,
+            drive_folder_link: file.drive_folder_link,
+            folder_name: file.folder_name,
           };
         }
         return {
@@ -289,11 +304,15 @@ export const FileManager = () => {
             <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
               <span className="text-primary-foreground font-bold text-sm">FM</span>
             </div>
-            <h1 className="text-xl font-semibold text-foreground">File Manager</h1>
+            <div>
+              <h1 className="text-xl font-semibold text-foreground">File Manager</h1>
+              <p className="text-sm text-muted-foreground">Organize and preview your files</p>
+            </div>
           </div>
           
           <div className="flex items-center space-x-4">
             <Auth user={user} onAuthChange={handleAuthChange} />
+            <div className="h-6 w-px bg-border" />
             <Button
               variant={isAdmin ? "default" : "secondary"}
               size="sm"
@@ -301,7 +320,7 @@ export const FileManager = () => {
               className="flex items-center space-x-2"
             >
               {isAdmin ? <Shield className="w-4 h-4" /> : <User className="w-4 h-4" />}
-              <span>{isAdmin ? "Admin" : "User"}</span>
+              <span>{isAdmin ? "Admin Mode" : "View Mode"}</span>
             </Button>
           </div>
         </div>

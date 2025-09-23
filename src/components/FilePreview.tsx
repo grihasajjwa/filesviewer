@@ -1,5 +1,5 @@
 import { FileItem } from "./FileManager";
-import { Download, FileText, Eye, ExternalLink } from "lucide-react";
+import { Download, FileText, Eye, ExternalLink, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatFileSize } from "@/lib/fileUtils";
@@ -36,6 +36,51 @@ export const FilePreview = ({ file, onDelete, isAdmin }: FilePreviewProps) => {
   };
 
   const renderPreview = () => {
+    if (file.type === "folder" && file.drive_folder_link) {
+      return (
+        <div className="h-full bg-card rounded-lg border border-border overflow-hidden">
+          <div className="h-full flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-border bg-muted/30">
+              <div className="flex items-center space-x-2">
+                <FolderOpen className="w-5 h-5 text-primary" />
+                <span className="font-medium text-sm">Google Drive Folder</span>
+              </div>
+              <div className="flex space-x-2">
+                <Button 
+                  variant="secondary" 
+                  size="sm"
+                  onClick={() => window.open(file.drive_folder_link, '_blank')}
+                >
+                  <ExternalLink className="w-4 h-4 mr-1" />
+                  Open Folder
+                </Button>
+                {isAdmin && (
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    onClick={() => handleDelete(file.id)}
+                  >
+                    Delete
+                  </Button>
+                )}
+              </div>
+            </div>
+            <div className="flex-1 bg-muted/10 p-4 overflow-auto">
+              <div className="h-full flex items-center justify-center">
+                <div className="text-center">
+                  <FolderOpen className="w-16 h-16 mx-auto mb-4 text-primary" />
+                  <h3 className="text-lg font-medium mb-2">Google Drive Folder</h3>
+                  <p className="text-muted-foreground mb-6">
+                    Click "Open Folder" to browse files in Google Drive
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     if (file.url.includes("drive.google.com")) {
       return (
         <div className="h-full bg-card rounded-lg border border-border overflow-hidden">

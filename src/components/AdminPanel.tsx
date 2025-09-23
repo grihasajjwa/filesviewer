@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Upload, Link2, Plus, FolderOpen, FileText } from "lucide-react";
+import { Upload, Link2, Plus, FolderOpen, FileText, Image, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -17,12 +17,14 @@ interface AdminPanelProps {
 export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
   const [driveFileLink, setDriveFileLink] = useState("");
   const [driveFolderLink, setDriveFolderLink] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   
   // Form states for each tab
   const [fileUploadForm, setFileUploadForm] = useState({ title: "", description: "" });
   const [driveFileForm, setDriveFileForm] = useState({ title: "", description: "" });
   const [driveFolderForm, setDriveFolderForm] = useState({ title: "", description: "" });
+  const [imageLinksForm, setImageLinksForm] = useState({ title: "", description: "" });
   
   const { toast } = useToast();
 
@@ -178,37 +180,142 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
     }
   };
 
-  const handleDriveFolderSubmit = () => {
+  const handleDriveFolderSubmit = async () => {
     if (!driveFolderLink.trim()) return;
 
-    // Simulate Google Drive folder integration
-    const mockDriveFiles: FileItem[] = [
-      {
-        id: `drive-folder-${Date.now()}-1`,
-        name: driveFolderForm.title || "Shared_Document.pdf",
-        type: "pdf",
-        size: 1.5 * 1024 * 1024,
-        uploadedAt: new Date().toISOString().split('T')[0],
-        url: "/sample.pdf",
-      },
-      {
-        id: `drive-folder-${Date.now()}-2`,
-        name: "Team_Photo.jpg",
-        type: "image",
-        size: 2.1 * 1024 * 1024,
-        uploadedAt: new Date().toISOString().split('T')[0],
-        url: "/placeholder.svg",
-      },
-    ];
+    try {
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        toast({
+          title: "Authentication Required",
+          description: "You must be logged in to add Google Drive folders",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    onFileUpload(mockDriveFiles);
-    setDriveFolderLink("");
-    setDriveFolderForm({ title: "", description: "" });
-    
-    toast({
-      title: "Drive Folder Connected",
-      description: "Files from Google Drive folder imported successfully",
-    });
+      // Extract folder ID from Google Drive folder link
+      const folderId = extractDriveFolderId(driveFolderLink);
+      if (!folderId) throw new Error("Invalid Google Drive folder link");
+
+      // Create a folder entry in the database
+      const { data: dbData, error: dbError } = await supabase
+        .from('files')
+        .insert({
+          user_id: user.id,
+          name: driveFolderForm.title || "Google Drive Folder",
+          type: "folder",
+          size: 0, // Folder size is 0
+          url: "Google Drive Folder", // Placeholder for folders
+          bucket_name: "Google Drive", // Placeholder for Google Drive folders
+          file_path: "Google Drive Folder", // Placeholder for Google Drive folders
+          drive_folder_link: driveFolderLink,
+          folder_name: driveFolderForm.title || "Google Drive Folder",
+        })
+        .select()
+        .single();
+
+      if (dbError) throw dbError;
+
+      const newFolder: FileItem = {
+        id: dbData.id,
+        name: dbData.name,
+        type: "folder",
+        size: 0,
+        uploadedAt: new Date(dbData.created_at).toISOString().split('T')[0],
+        url: driveFolderLink, // Use the original link for folders
+      };
+
+      onFileUpload([newFolder]);
+      setDriveFolderLink("");
+      setDriveFolderForm({ title: "", description: "" });
+
+      toast({
+        title: "Drive Folder Connected",
+        description: "Google Drive folder linked successfully",
+      });
+    } catch (error) {
+      console.error("Drive folder submission error:", error);
+      toast({
+        title: "Submission Failed",
+        description: "Failed to link Google Drive folder. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleImageLinkSubmit = async () => {
+    if (!imageUrl.trim()) return;
+
+    try {
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        toast({
+          title: "Authentication Required",
+          description: "You must be logged in to add image links",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Save internet image to database
+      const { data: dbData, error: dbError } = await supabase
+        .from('internet_images')
+        .insert({
+          user_id: user.id,
+          title: imageLinksForm.title || "Internet Image",
+          url: imageUrl,
+          description: imageLinksForm.description,
+        })
+        .select()
+        .single();
+
+      if (dbError) throw dbError;
+
+      // Also add to files table for unified display
+      const { data: fileData, error: fileError } = await supabase
+        .from('files')
+        .insert({
+          user_id: user.id,
+          name: imageLinksForm.title || "Internet Image",
+          type: "image",
+          size: 0, // Unknown size for external images
+          url: imageUrl,
+          bucket_name: "Internet", // Placeholder for internet images
+          file_path: "Internet Image", // Placeholder for internet images
+        })
+        .select()
+        .single();
+
+      if (fileError) throw fileError;
+
+      const newImage: FileItem = {
+        id: fileData.id,
+        name: fileData.name,
+        type: "image",
+        size: 0,
+        uploadedAt: new Date(fileData.created_at).toISOString().split('T')[0],
+        url: imageUrl,
+      };
+
+      onFileUpload([newImage]);
+      setImageUrl("");
+      setImageLinksForm({ title: "", description: "" });
+
+      toast({
+        title: "Image Link Added",
+        description: "Internet image link saved successfully",
+      });
+    } catch (error) {
+      console.error("Image link submission error:", error);
+      toast({
+        title: "Submission Failed",
+        description: "Failed to add image link. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const getFileType = (filename: string): string => {
@@ -257,21 +364,45 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
     }
   };
 
+  // Enhanced utility function to extract Google Drive folder ID from a link
+  const extractDriveFolderId = (link: string): string | null => {
+    try {
+      const patterns = [
+        /https:\/\/drive\.google\.com\/drive\/folders\/([-\w]{25,})/, // Shared folder link
+        /https:\/\/drive\.google\.com\/drive\/u\/\d+\/folders\/([-\w]{25,})/, // User-specific folder link
+      ];
+
+      for (const pattern of patterns) {
+        const match = link.match(pattern);
+        if (match) return match[1];
+      }
+
+      return null; // No match found
+    } catch (error) {
+      console.error("Error extracting Drive folder ID:", error);
+      return null;
+    }
+  };
+
   return (
-    <Card className="m-4 p-4 bg-surface border-border shadow-sm">
+        <Card className="m-4 p-4 bg-surface border-border shadow-sm">
       <div className="space-y-4">
-        <div className="flex items-center space-x-2 mb-3">
-          <div className="w-6 h-6 bg-gradient-primary rounded flex items-center justify-center">
-            <Plus className="w-3 h-3 text-primary-foreground" />
+        <div className="flex items-center space-x-3 mb-4">
+          <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
+            <Plus className="w-4 h-4 text-primary-foreground" />
           </div>
-          <h3 className="font-medium text-foreground">Admin Panel</h3>
+          <div>
+            <h3 className="font-semibold text-foreground">Admin Panel</h3>
+            <p className="text-sm text-muted-foreground">Upload files and manage content</p>
+          </div>
         </div>
 
         <Tabs defaultValue="files" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="files" className="text-xs">Files Upload</TabsTrigger>
             <TabsTrigger value="drive-file" className="text-xs">Drive File</TabsTrigger>
             <TabsTrigger value="drive-folder" className="text-xs">Drive Folder</TabsTrigger>
+            <TabsTrigger value="image-links" className="text-xs">Image Links</TabsTrigger>
           </TabsList>
 
           {/* Files Upload Tab */}
@@ -408,6 +539,52 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
               <p className="text-xs text-muted-foreground flex items-center">
                 <FolderOpen className="w-3 h-3 mr-1" />
                 Connect a Google Drive folder to import files
+              </p>
+            </div>
+          </TabsContent>
+
+          {/* Internet Image Links Tab */}
+          <TabsContent value="image-links" className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="image-title">Image Title</Label>
+              <Input
+                id="image-title"
+                placeholder="Enter image title..."
+                value={imageLinksForm.title}
+                onChange={(e) => setImageLinksForm({ ...imageLinksForm, title: e.target.value })}
+                className="text-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="image-description">Description</Label>
+              <Textarea
+                id="image-description"
+                placeholder="Enter image description..."
+                value={imageLinksForm.description}
+                onChange={(e) => setImageLinksForm({ ...imageLinksForm, description: e.target.value })}
+                className="text-sm min-h-[60px]"
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex space-x-2">
+                <Input
+                  placeholder="Paste image URL from internet..."
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  className="flex-1 text-sm"
+                />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleImageLinkSubmit}
+                  disabled={!imageUrl.trim()}
+                >
+                  <Globe className="w-4 h-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground flex items-center">
+                <Image className="w-3 h-3 mr-1" />
+                Add images from any website URL
               </p>
             </div>
           </TabsContent>
