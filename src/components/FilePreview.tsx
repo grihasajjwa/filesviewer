@@ -66,17 +66,22 @@ export const FilePreview = ({ file, onDelete, isAdmin }: FilePreviewProps) => {
               </div>
             </div>
             <div className="flex-1 bg-muted/10 p-4 overflow-auto">
-              {file.url.includes("drive.google.com") ? (
-                <iframe
-                  src={`https://drive.google.com/file/d/${extractDriveFileId(file.url)}/preview`}
-                  title="Google Drive File Preview"
-                  className="w-full h-full border-none"
-                  style={{ height: '100vh', overflow: 'auto' }}
-                  allow="autoplay"
-                ></iframe>
-              ) : (
-                <p className="text-center text-muted-foreground">Preview not available for Google Drive files. Use the Open button to view the file.</p>
-              )}
+              <div className="h-full flex items-center justify-center">
+                <div className="text-center">
+                  <FileText className="w-16 h-16 mx-auto mb-4 text-primary" />
+                  <h3 className="text-lg font-medium mb-2">Google Drive File</h3>
+                  <p className="text-muted-foreground mb-6">
+                    Preview not available for Google Drive files due to security restrictions.
+                  </p>
+                  <Button 
+                    onClick={() => window.open(file.url, '_blank')}
+                    className="flex items-center space-x-2"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    <span>Open in Google Drive</span>
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

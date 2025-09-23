@@ -117,6 +117,8 @@ export const Auth = ({ user, onAuthChange }: AuthProps) => {
       <form onSubmit={handleAuth} className="space-y-4">
         <div>
           <Input
+            id="email"
+            name="email"
             type="email"
             placeholder="Email"
             value={email}
@@ -126,6 +128,8 @@ export const Auth = ({ user, onAuthChange }: AuthProps) => {
         </div>
         <div>
           <Input
+            id="password"
+            name="password"
             type="password"
             placeholder="Password"
             value={password}
