@@ -86,14 +86,18 @@ export const FolderCarousel = ({ folderLink, folderName, onDelete, isAdmin }: Fo
               <span className="font-medium text-sm">Google Drive Folder</span>
             </div>
             <div className="flex space-x-2">
-              <Button 
-                variant="secondary" 
-                size="sm"
-                onClick={() => window.open(folderLink, '_blank')}
-              >
-                <ExternalLink className="w-4 h-4 mr-1" />
-                Open Folder
-              </Button>
+            <Button 
+              variant="secondary" 
+              size="sm"
+              onClick={() => {
+                // Convert sharing link to direct folder access
+                const directLink = folderLink.replace(/\/drive\/folders\/([^?]+).*/, '/drive/folders/$1');
+                window.open(directLink, '_blank', 'noopener,noreferrer');
+              }}
+            >
+              <ExternalLink className="w-4 h-4 mr-1" />
+              Open Folder
+            </Button>
               {isAdmin && onDelete && (
                 <Button 
                   variant="destructive" 
@@ -137,7 +141,11 @@ export const FolderCarousel = ({ folderLink, folderName, onDelete, isAdmin }: Fo
             <Button 
               variant="secondary" 
               size="sm"
-              onClick={() => window.open(folderLink, '_blank')}
+              onClick={() => {
+                // Convert sharing link to direct folder access
+                const directLink = folderLink.replace(/\/drive\/folders\/([^?]+).*/, '/drive/folders/$1');
+                window.open(directLink, '_blank', 'noopener,noreferrer');
+              }}
             >
               <ExternalLink className="w-4 h-4 mr-1" />
               Open Folder
