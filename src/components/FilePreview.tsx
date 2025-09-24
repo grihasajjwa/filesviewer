@@ -2,7 +2,7 @@ import { FileItem } from "./FileManager";
 import { Download, FileText, Eye, ExternalLink, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { formatFileSize } from "@/lib/fileUtils";
+import { formatFileSize, isPowerPointFile } from "@/lib/fileUtils";
 import { saveAs } from "file-saver";
 
 interface FilePreviewProps {
@@ -123,6 +123,50 @@ export const FilePreview = ({ file, onDelete, isAdmin }: FilePreviewProps) => {
                   }}
                 />
               </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Check if it's a PowerPoint file
+    if (isPowerPointFile(file.name)) {
+      return (
+        <div className="h-full bg-card rounded-lg border border-border overflow-hidden">
+          <div className="h-full flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-border bg-muted/30">
+              <div className="flex items-center space-x-2">
+                <FileText className="w-5 h-5 text-orange-500" />
+                <span className="font-medium text-sm">PowerPoint Viewer</span>
+              </div>
+              <div className="flex space-x-2">
+                <Button 
+                  variant="secondary" 
+                  size="sm"
+                  onClick={() => window.open(file.url, '_blank')}
+                >
+                  <ExternalLink className="w-4 h-4 mr-1" />
+                  Download
+                </Button>
+                {isAdmin && (
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    onClick={() => handleDelete(file.id)}
+                  >
+                    Delete
+                  </Button>
+                )}
+              </div>
+            </div>
+            <div className="flex-1 bg-muted/10 overflow-auto">
+              <iframe
+                src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(file.url)}`}
+                className="w-full h-full border-0"
+                title={file.name}
+                style={{ height: '100%', width: '100%', minHeight: '600px' }}
+                allowFullScreen
+              />
             </div>
           </div>
         </div>

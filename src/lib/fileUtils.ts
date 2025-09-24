@@ -27,3 +27,8 @@ export const isOfficeFile = (filename: string): boolean => {
   const officeExtensions = ["doc", "docx", "xls", "xlsx", "ppt", "pptx"];
   return officeExtensions.includes(getFileExtension(filename));
 };
+
+export const isPowerPointFile = (filename: string): boolean => {
+  const powerPointExtensions = ["ppt", "pptx"];
+  return powerPointExtensions.includes(getFileExtension(filename));
+};
