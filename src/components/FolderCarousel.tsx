@@ -28,33 +28,9 @@ export const FolderCarousel = ({ folderLink, folderName, onDelete, isAdmin }: Fo
   useEffect(() => {
     const folderId = extractFolderId(folderLink);
     if (folderId) {
-      // Mock folder items - In a real implementation, you'd use Google Drive API
-      // For demonstration, creating sample items based on the folder ID
-      const mockItems = [
-        {
-          id: '1',
-          name: 'Document 1.pdf',
-          type: 'document' as const,
-          embedUrl: `https://drive.google.com/file/d/1example1/preview`,
-          directUrl: `https://drive.google.com/file/d/1example1/view`
-        },
-        {
-          id: '2', 
-          name: 'Image 1.jpg',
-          type: 'image' as const,
-          embedUrl: `https://drive.google.com/file/d/1example2/preview`,
-          directUrl: `https://drive.google.com/file/d/1example2/view`
-        },
-        {
-          id: '3',
-          name: 'Document 2.docx', 
-          type: 'document' as const,
-          embedUrl: `https://drive.google.com/file/d/1example3/preview`,
-          directUrl: `https://drive.google.com/file/d/1example3/view`
-        }
-      ];
-      
-      setFolderItems(mockItems);
+      // Since we don't have Google Drive API access, we'll show the folder 
+      // but indicate that individual file previews aren't available
+      setFolderItems([]);
     }
   }, [folderLink]);
 
