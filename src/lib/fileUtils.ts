@@ -37,3 +37,8 @@ export const isWordFile = (filename: string): boolean => {
   const wordExtensions = ["doc", "docx"];
   return wordExtensions.includes(getFileExtension(filename));
 };
+
+export const isExcelFile = (filename: string): boolean => {
+  const excelExtensions = ["xls", "xlsx"];
+  return excelExtensions.includes(getFileExtension(filename));
+};
