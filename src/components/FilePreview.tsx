@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatFileSize, isPowerPointFile, isWordFile, isExcelFile } from "@/lib/fileUtils";
 import { saveAs } from "file-saver";
+import { FolderCarousel } from "./FolderCarousel";
 
 interface FilePreviewProps {
   file: FileItem | null;
@@ -36,6 +37,35 @@ export const FilePreview = ({ file, onDelete, isAdmin }: FilePreviewProps) => {
   };
 
   const renderPreview = () => {
+    if (file.type === "folder" && file.folderFiles) {
+      return (
+        <div className="h-full bg-card rounded-lg border border-border overflow-hidden">
+          <div className="h-full flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-border bg-muted/30">
+              <div className="flex items-center space-x-2">
+                <FolderOpen className="w-5 h-5 text-primary" />
+                <span className="font-medium text-sm">Local Folder</span>
+              </div>
+              <div className="flex space-x-2">
+                {isAdmin && (
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    onClick={() => handleDelete(file.id)}
+                  >
+                    Delete
+                  </Button>
+                )}
+              </div>
+            </div>
+            <div className="flex-1 bg-muted/10 p-4 overflow-auto">
+              <FolderCarousel files={file.folderFiles} />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     if (file.type === "folder" && file.drive_folder_link) {
       return (
         <div className="h-full bg-card rounded-lg border border-border overflow-hidden">

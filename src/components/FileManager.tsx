@@ -21,6 +21,7 @@ export interface FileItem {
   drive_link?: string;
   drive_folder_link?: string;
   folder_name?: string;
+  folderFiles?: FileItem[];
 }
 
 const mockFiles: FileItem[] = [
@@ -133,6 +134,20 @@ export const FileManager = () => {
             folder_name: file.folder_name,
           };
         }
+        if (file.type === "folder" && file.folder_name) {
+          // For local folders, we need to fetch the folder files
+          return {
+            id: file.id,
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            uploadedAt: new Date(file.created_at).toISOString().split('T')[0],
+            url: file.url,
+            thumbnail: file.thumbnail,
+            folder_name: file.folder_name,
+            folderFiles: [], // Will be populated later
+          };
+        }
         return {
           id: file.id,
           name: file.name,
@@ -141,8 +156,38 @@ export const FileManager = () => {
           uploadedAt: new Date(file.created_at).toISOString().split('T')[0],
           url: file.url,
           thumbnail: file.thumbnail,
+          folder_name: file.folder_name,
         };
       });
+
+      // For local folders, fetch their files
+      const folders = formattedFiles.filter(file => file.type === "folder" && file.folder_name && !file.drive_folder_link);
+      for (const folder of folders) {
+        try {
+          const { data: folderFiles } = await supabase
+            .from('files')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('folder_name', folder.folder_name)
+            .neq('type', 'folder')
+            .order('created_at', { ascending: false });
+
+          if (folderFiles) {
+            folder.folderFiles = folderFiles.map(file => ({
+              id: file.id,
+              name: file.name,
+              type: file.type,
+              size: file.size,
+              uploadedAt: new Date(file.created_at).toISOString().split('T')[0],
+              url: file.url,
+              thumbnail: file.thumbnail,
+              folder_name: file.folder_name,
+            }));
+          }
+        } catch (error) {
+          console.error('Error fetching folder files:', error);
+        }
+      }
 
       setFiles(formattedFiles);
     } catch (err: any) {

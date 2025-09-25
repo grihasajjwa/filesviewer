@@ -19,9 +19,11 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
   const [driveFolderLink, setDriveFolderLink] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [isFolderUploading, setIsFolderUploading] = useState(false);
   
   // Form states for each tab
   const [fileUploadForm, setFileUploadForm] = useState({ title: "", description: "" });
+  const [folderUploadForm, setFolderUploadForm] = useState({ title: "", description: "" });
   const [driveFileForm, setDriveFileForm] = useState({ title: "", description: "" });
   const [driveFolderForm, setDriveFolderForm] = useState({ title: "", description: "" });
   const [imageLinksForm, setImageLinksForm] = useState({ title: "", description: "" });
@@ -106,6 +108,126 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
       });
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleFolderUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    setIsFolderUploading(true);
+    
+    try {
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        toast({
+          title: "Authentication Required",
+          description: "You must be logged in to upload folders",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Get folder name from the first file's path
+      const firstFile = files[0];
+      const folderPath = firstFile.webkitRelativePath;
+      const folderName = folderPath.split('/')[0];
+
+      // Create folder entry first
+      const { data: folderData, error: folderError } = await supabase
+        .from('files')
+        .insert({
+          user_id: user.id,
+          name: folderUploadForm.title || folderName,
+          type: "folder",
+          size: 0,
+          url: "Local Folder",
+          bucket_name: "folders",
+          file_path: `folders/${folderName}`,
+          folder_name: folderUploadForm.title || folderName,
+        })
+        .select()
+        .single();
+
+      if (folderError) throw folderError;
+
+      // Upload all files in the folder
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `folders/${folderName}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+        
+        // Upload to Supabase Storage
+        const { data, error } = await supabase.storage
+          .from('files')
+          .upload(fileName, file);
+
+        if (error) throw error;
+
+        // Get the public URL for the uploaded file
+        const { data: { publicUrl } } = supabase.storage
+          .from('files')
+          .getPublicUrl(fileName);
+
+        // Save file metadata to database with folder reference
+        const { data: dbData, error: dbError } = await supabase
+          .from('files')
+          .insert({
+            user_id: user.id,
+            name: file.name,
+            type: getFileType(file.name),
+            size: file.size,
+            url: publicUrl,
+            bucket_name: 'files',
+            file_path: fileName,
+            folder_name: folderUploadForm.title || folderName,
+          })
+          .select()
+          .single();
+
+        if (dbError) throw dbError;
+
+        return {
+          id: dbData.id,
+          name: dbData.name,
+          type: dbData.type,
+          size: dbData.size,
+          uploadedAt: new Date(dbData.created_at).toISOString().split('T')[0],
+          url: dbData.url,
+          folder_name: folderUploadForm.title || folderName,
+        };
+      });
+
+      const folderFiles: FileItem[] = await Promise.all(uploadPromises);
+      
+      // Create the folder item to be added to the list
+      const folderItem: FileItem = {
+        id: folderData.id,
+        name: folderData.name,
+        type: "folder",
+        size: folderFiles.reduce((total, file) => total + file.size, 0),
+        uploadedAt: new Date(folderData.created_at).toISOString().split('T')[0],
+        url: "Local Folder",
+        folder_name: folderUploadForm.title || folderName,
+        folderFiles: folderFiles,
+      };
+
+      onFileUpload([folderItem]);
+      setFolderUploadForm({ title: "", description: "" });
+      
+      toast({
+        title: "Folder Upload Successful",
+        description: `Folder "${folderName}" with ${files.length} file(s) uploaded successfully`,
+      });
+    } catch (error) {
+      console.error('Folder upload error:', error);
+      toast({
+        title: "Upload Failed",
+        description: "Failed to upload folder. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsFolderUploading(false);
     }
   };
 
@@ -398,8 +520,9 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
         </div>
 
         <Tabs defaultValue="files" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="files" className="text-xs">Files Upload</TabsTrigger>
+            <TabsTrigger value="folder" className="text-xs">Folder Upload</TabsTrigger>
             <TabsTrigger value="drive-file" className="text-xs">Drive File</TabsTrigger>
             <TabsTrigger value="drive-folder" className="text-xs">Drive Folder</TabsTrigger>
             <TabsTrigger value="image-links" className="text-xs">Image Links</TabsTrigger>
@@ -448,6 +571,56 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
                 className="hidden"
                 disabled={isUploading}
               />
+            </div>
+          </TabsContent>
+
+          {/* Folder Upload Tab */}
+          <TabsContent value="folder" className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="folder-title">Folder Title</Label>
+              <Input
+                id="folder-title"
+                placeholder="Enter folder title..."
+                value={folderUploadForm.title}
+                onChange={(e) => setFolderUploadForm({ ...folderUploadForm, title: e.target.value })}
+                className="text-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="folder-description">Description</Label>
+              <Textarea
+                id="folder-description"
+                placeholder="Enter folder description..."
+                value={folderUploadForm.description}
+                onChange={(e) => setFolderUploadForm({ ...folderUploadForm, description: e.target.value })}
+                className="text-sm min-h-[60px]"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="folder-upload-button">Upload Folder</Label>
+              <Button
+                id="folder-upload-button"
+                variant="default"
+                size="sm"
+                className="w-full flex items-center justify-center"
+                onClick={() => document.getElementById('folder-input')?.click()}
+                disabled={isFolderUploading}
+              >
+                <FolderOpen className="w-4 h-4 mr-2" />
+                {isFolderUploading ? "Uploading..." : "Upload Folder"}
+              </Button>
+              <input
+                id="folder-input"
+                type="file"
+                {...({ webkitdirectory: "", directory: "", multiple: true } as any)}
+                onChange={handleFolderUpload}
+                className="hidden"
+                disabled={isFolderUploading}
+              />
+              <p className="text-xs text-muted-foreground flex items-center">
+                <FolderOpen className="w-3 h-3 mr-1" />
+                Select an entire folder with all its files
+              </p>
             </div>
           </TabsContent>
 
