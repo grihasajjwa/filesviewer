@@ -520,12 +520,12 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
         </div>
 
         <Tabs defaultValue="files" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="files" className="text-xs">Files Upload</TabsTrigger>
-            <TabsTrigger value="folder" className="text-xs">Folder Upload</TabsTrigger>
-            <TabsTrigger value="drive-file" className="text-xs">Drive File</TabsTrigger>
-            <TabsTrigger value="drive-folder" className="text-xs">Drive Folder</TabsTrigger>
-            <TabsTrigger value="image-links" className="text-xs">Image Links</TabsTrigger>
+          <TabsList className="flex flex-wrap justify-center gap-1 h-auto p-1">
+            <TabsTrigger value="files" className="text-xs flex-1 min-w-0">Files Upload</TabsTrigger>
+            <TabsTrigger value="folder" className="text-xs flex-1 min-w-0">Folder Upload</TabsTrigger>
+            <TabsTrigger value="drive-file" className="text-xs flex-1 min-w-0">Drive File</TabsTrigger>
+            <TabsTrigger value="drive-folder" className="text-xs flex-1 min-w-0">Drive Folder</TabsTrigger>
+            <TabsTrigger value="image-links" className="text-xs flex-1 min-w-0">Image Links</TabsTrigger>
           </TabsList>
 
           {/* Files Upload Tab */}
