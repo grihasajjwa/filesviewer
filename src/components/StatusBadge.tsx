@@ -56,9 +56,8 @@ export const StatusBadge = ({ type, text }: StatusBadgeProps) => {
   const config = getBadgeConfig();
 
   return (
-    <span className={`inline-flex items-center space-x-1 text-xs px-2 py-1 rounded-full border ${config.color}`}>
+    <span className={`inline-flex items-center justify-center p-1 rounded-full border ${config.color}`} title={text || config.defaultText}>
       {config.icon}
-      <span>{text || config.defaultText}</span>
     </span>
   );
 };
