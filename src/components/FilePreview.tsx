@@ -1,10 +1,11 @@
 import { FileItem } from "./FileManager";
-import { Download, FileText, Eye, ExternalLink, FolderOpen } from "lucide-react";
+import { Download, FileText, Eye, ExternalLink, FolderOpen, Presentation, Maximize } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatFileSize, isPowerPointFile, isWordFile, isExcelFile } from "@/lib/fileUtils";
 import { saveAs } from "file-saver";
 import { FolderCarousel } from "./FolderCarousel";
+import { useState, useRef } from "react";
 
 interface FilePreviewProps {
   file: FileItem | null;
@@ -13,6 +14,24 @@ interface FilePreviewProps {
 }
 
 export const FilePreview = ({ file, onDelete, isAdmin }: FilePreviewProps) => {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const handleFullscreen = () => {
+    if (iframeRef.current) {
+      if (iframeRef.current.requestFullscreen) {
+        iframeRef.current.requestFullscreen();
+        setIsFullscreen(true);
+      }
+    }
+  };
+
+  const openPresentationMode = (url: string) => {
+    // Open PowerPoint in presentation mode using Office Online
+    const presentUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(url)}`;
+    window.open(presentUrl, '_blank', 'width=1920,height=1080,fullscreen=yes');
+  };
+
   if (!file) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -259,6 +278,23 @@ export const FilePreview = ({ file, onDelete, isAdmin }: FilePreviewProps) => {
               </div>
               <div className="flex space-x-2">
                 <Button 
+                  variant="default" 
+                  size="sm"
+                  onClick={() => openPresentationMode(file.url)}
+                  className="bg-orange-500 hover:bg-orange-600"
+                >
+                  <Presentation className="w-4 h-4 mr-1" />
+                  Present
+                </Button>
+                <Button 
+                  variant="secondary" 
+                  size="sm"
+                  onClick={handleFullscreen}
+                >
+                  <Maximize className="w-4 h-4 mr-1" />
+                  Fullscreen
+                </Button>
+                <Button 
                   variant="secondary" 
                   size="sm"
                   onClick={() => window.open(file.url, '_blank')}
@@ -279,6 +315,7 @@ export const FilePreview = ({ file, onDelete, isAdmin }: FilePreviewProps) => {
             </div>
             <div className="flex-1 bg-muted/10 overflow-auto">
               <iframe
+                ref={iframeRef}
                 src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(file.url)}`}
                 className="w-full h-full border-0"
                 title={file.name}
