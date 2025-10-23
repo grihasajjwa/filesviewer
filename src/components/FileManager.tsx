@@ -276,10 +276,13 @@ export const FileManager = () => {
   const handleAuthChange = (newUser: SupabaseUser | null, newSession: Session | null) => {
     setUser(newUser);
     setSession(newSession);
+    setLoading(false);
+    
     // Reset admin status when user changes
     if (!newUser) {
       setIsAdmin(false);
       setFiles([]);
+      setSelectedFile(null);
     } else {
       // Fetch files when user logs in
       fetchFiles(newUser.id);

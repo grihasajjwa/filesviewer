@@ -76,11 +76,24 @@ export const Auth = ({ user, onAuthChange }: AuthProps) => {
   };
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    toast({
-      title: "Signed out",
-      description: "You have been successfully signed out.",
-    });
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      // Explicitly update parent state
+      onAuthChange(null, null);
+      
+      toast({
+        title: "Signed out",
+        description: "You have been successfully signed out.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Sign out error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   if (user) {
