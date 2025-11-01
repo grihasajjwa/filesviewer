@@ -95,12 +95,39 @@ export type Database = {
         }
         Relationships: []
       }
+      page_visit_stats: {
+        Row: {
+          created_at: string
+          id: string
+          last_visited_at: string
+          page_path: string
+          visit_count: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_visited_at?: string
+          page_path: string
+          visit_count?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_visited_at?: string
+          page_path?: string
+          visit_count?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      increment_page_visit: {
+        Args: { page_path_param: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
