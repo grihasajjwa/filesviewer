@@ -1,24 +1,38 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { SUPABASE_URL } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 
 const FileRedirect = () => {
   const { fileId } = useParams<{ fileId: string }>();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const redirectToFile = async () => {
+    const fetchAndRedirect = async () => {
       if (!fileId) {
         setError("File ID not found");
         return;
       }
 
-      // Redirect to the edge function proxy URL
-      const proxyUrl = `${SUPABASE_URL}/functions/v1/file-proxy?fileId=${fileId}`;
-      window.location.href = proxyUrl;
+      const { data, error: fetchError } = await supabase
+        .from("files")
+        .select("url, drive_link")
+        .eq("id", fileId)
+        .single();
+
+      if (fetchError || !data) {
+        setError("File not found");
+        return;
+      }
+
+      const redirectUrl = data.drive_link || data.url;
+      if (redirectUrl) {
+        window.location.href = redirectUrl;
+      } else {
+        setError("No valid URL found for this file");
+      }
     };
 
-    redirectToFile();
+    fetchAndRedirect();
   }, [fileId]);
 
   if (error) {
@@ -36,7 +50,7 @@ const FileRedirect = () => {
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="text-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-        <p className="text-muted-foreground">Loading file...</p>
+        <p className="text-muted-foreground">Redirecting to file...</p>
       </div>
     </div>
   );
