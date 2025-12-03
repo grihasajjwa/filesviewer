@@ -1,5 +1,5 @@
 import { FileItem } from "./FileManager";
-import { Download, FileText, Eye, ExternalLink, FolderOpen, Presentation, Maximize } from "lucide-react";
+import { Download, FileText, Eye, ExternalLink, FolderOpen, Presentation, Maximize, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatFileSize, isPowerPointFile, isWordFile, isExcelFile } from "@/lib/fileUtils";
@@ -30,6 +30,12 @@ export const FilePreview = ({ file, onDelete, isAdmin }: FilePreviewProps) => {
     // Open PowerPoint in presentation mode using Office Online
     const presentUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(url)}`;
     window.open(presentUrl, '_blank', 'width=1920,height=1080,fullscreen=yes');
+  };
+
+  const shareToWhatsApp = (fileUrl: string, fileName: string) => {
+    const message = `Check out this document: ${fileName}\n${fileUrl}`;
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
   };
 
   if (!file) {
@@ -468,22 +474,33 @@ export const FilePreview = ({ file, onDelete, isAdmin }: FilePreviewProps) => {
                 <span>Uploaded {new Date(file.uploadedAt).toLocaleDateString()}</span>
               </div>
             </div>
-            <Button
-              variant="secondary"
-              size="sm"
-              className="flex items-center space-x-2"
-              onClick={() => {
-                const downloadUrl = file.drive_link || file.url;
-                if (downloadUrl) {
-                  saveAs(downloadUrl, file.name || "download");
-                } else {
-                  console.error("No valid download URL found for the file.");
-                }
-              }}
-            >
-              <Download className="w-4 h-4" />
-              <span>Download</span>
-            </Button>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="flex items-center space-x-2"
+                onClick={() => shareToWhatsApp(file.drive_link || file.url, file.name)}
+              >
+                <Share2 className="w-4 h-4" />
+                <span>WhatsApp</span>
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="flex items-center space-x-2"
+                onClick={() => {
+                  const downloadUrl = file.drive_link || file.url;
+                  if (downloadUrl) {
+                    saveAs(downloadUrl, file.name || "download");
+                  } else {
+                    console.error("No valid download URL found for the file.");
+                  }
+                }}
+              >
+                <Download className="w-4 h-4" />
+                <span>Download</span>
+              </Button>
+            </div>
           </div>
         </Card>
 
