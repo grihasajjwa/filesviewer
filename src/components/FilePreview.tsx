@@ -32,8 +32,10 @@ export const FilePreview = ({ file, onDelete, isAdmin }: FilePreviewProps) => {
     window.open(presentUrl, '_blank', 'width=1920,height=1080,fullscreen=yes');
   };
 
-  const shareToWhatsApp = (fileUrl: string, fileName: string) => {
-    const message = `Check out this document: ${fileName}\n${fileUrl}`;
+  const shareToWhatsApp = (fileId: string, fileName: string) => {
+    // Use frontend URL to hide backend Supabase URL
+    const frontendUrl = `${window.location.origin}/file/${fileId}`;
+    const message = `Check out this document: ${fileName}\n${frontendUrl}`;
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
@@ -479,7 +481,7 @@ export const FilePreview = ({ file, onDelete, isAdmin }: FilePreviewProps) => {
                 variant="secondary"
                 size="sm"
                 className="flex items-center space-x-2"
-                onClick={() => shareToWhatsApp(file.drive_link || file.url, file.name)}
+                onClick={() => shareToWhatsApp(file.id, file.name)}
               >
                 <Share2 className="w-4 h-4" />
                 <span>WhatsApp</span>
