@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      file_shares: {
+        Row: {
+          created_at: string
+          created_by: string
+          expires_at: string | null
+          file_id: string
+          id: string
+          share_token: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          expires_at?: string | null
+          file_id: string
+          id?: string
+          share_token?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          expires_at?: string | null
+          file_id?: string
+          id?: string
+          share_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "file_shares_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       files: {
         Row: {
           bucket_name: string
@@ -124,6 +159,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_file_by_share_token: {
+        Args: { token: string }
+        Returns: {
+          drive_link: string
+          id: string
+          name: string
+          size: number
+          type: string
+          url: string
+        }[]
+      }
       increment_page_visit: {
         Args: { page_path_param: string }
         Returns: undefined

@@ -1,21 +1,24 @@
 import { FileItem } from "./FileManager";
-import { Download, FileText, Eye, ExternalLink, FolderOpen, Presentation, Maximize, Share2 } from "lucide-react";
+import { Download, FileText, Eye, ExternalLink, FolderOpen, Presentation, Maximize, Share2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatFileSize, isPowerPointFile, isWordFile, isExcelFile } from "@/lib/fileUtils";
 import { saveAs } from "file-saver";
 import { FolderCarousel } from "./FolderCarousel";
 import { useState, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface FilePreviewProps {
   file: FileItem | null;
   onDelete: (id: string) => void;
-  isAdmin: boolean; // Add isAdmin prop
+  isAdmin: boolean;
 }
 
 export const FilePreview = ({ file, onDelete, isAdmin }: FilePreviewProps) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
 
   const handleFullscreen = () => {
     if (iframeRef.current) {
@@ -27,17 +30,47 @@ export const FilePreview = ({ file, onDelete, isAdmin }: FilePreviewProps) => {
   };
 
   const openPresentationMode = (url: string) => {
-    // Open PowerPoint in presentation mode using Office Online
     const presentUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(url)}`;
     window.open(presentUrl, '_blank', 'width=1920,height=1080,fullscreen=yes');
   };
 
-  const shareToWhatsApp = (fileId: string, fileName: string) => {
-    // Use frontend URL to hide backend Supabase URL
-    const frontendUrl = `${window.location.origin}/file/${fileId}`;
-    const message = `Check out this document: ${fileName}\n${frontendUrl}`;
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
+  const shareToWhatsApp = async (fileId: string, fileName: string) => {
+    setIsSharing(true);
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("You must be logged in to share files");
+        return;
+      }
+
+      // Create a share token for this file
+      const { data: shareData, error: shareError } = await supabase
+        .from('file_shares')
+        .insert({
+          file_id: fileId,
+          created_by: user.id
+        })
+        .select('share_token')
+        .single();
+
+      if (shareError) {
+        console.error("Error creating share link:", shareError);
+        toast.error("Failed to create share link");
+        return;
+      }
+
+      // Use share token in the URL
+      const shareUrl = `${window.location.origin}/share/${shareData.share_token}`;
+      const message = `Check out this document: ${fileName}\n${shareUrl}`;
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+      window.open(whatsappUrl, '_blank');
+    } catch (error) {
+      console.error("Error sharing file:", error);
+      toast.error("Failed to share file");
+    } finally {
+      setIsSharing(false);
+    }
   };
 
   if (!file) {
@@ -482,9 +515,10 @@ export const FilePreview = ({ file, onDelete, isAdmin }: FilePreviewProps) => {
                 size="sm"
                 className="flex items-center space-x-2"
                 onClick={() => shareToWhatsApp(file.id, file.name)}
+                disabled={isSharing}
               >
-                <Share2 className="w-4 h-4" />
-                <span>WhatsApp</span>
+                {isSharing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
+                <span>{isSharing ? 'Sharing...' : 'WhatsApp'}</span>
               </Button>
               <Button
                 variant="secondary"
