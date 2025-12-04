@@ -3,24 +3,29 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
 const FileRedirect = () => {
-  const { fileId } = useParams<{ fileId: string }>();
+  const { token } = useParams<{ token: string }>();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchAndRedirect = async () => {
-      if (!fileId) {
-        setError("File ID not found");
+      if (!token) {
+        setError("Invalid share link");
         return;
       }
 
+      // Use the secure function to get file by share token
       const { data, error: fetchError } = await supabase
-        .from("files")
-        .select("url, drive_link")
-        .eq("id", fileId)
-        .single();
+        .rpc('get_file_by_share_token', { token })
+        .maybeSingle();
 
-      if (fetchError || !data) {
-        setError("File not found");
+      if (fetchError) {
+        console.error("Error fetching file:", fetchError);
+        setError("Unable to access this file");
+        return;
+      }
+
+      if (!data) {
+        setError("This share link is invalid or has expired");
         return;
       }
 
@@ -33,7 +38,7 @@ const FileRedirect = () => {
     };
 
     fetchAndRedirect();
-  }, [fileId]);
+  }, [token]);
 
   if (error) {
     return (
