@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Upload, Link2, Plus, FolderOpen, FileText, Image, Globe } from "lucide-react";
+import { Upload, Link2, Plus, FolderOpen, FileText, Image, Globe, Youtube } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -18,6 +18,7 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
   const [driveFileLink, setDriveFileLink] = useState("");
   const [driveFolderLink, setDriveFolderLink] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [youtubeUrl, setYoutubeUrl] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [isFolderUploading, setIsFolderUploading] = useState(false);
   
@@ -27,6 +28,7 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
   const [driveFileForm, setDriveFileForm] = useState({ title: "", description: "" });
   const [driveFolderForm, setDriveFolderForm] = useState({ title: "", description: "" });
   const [imageLinksForm, setImageLinksForm] = useState({ title: "", description: "" });
+  const [youtubeForm, setYoutubeForm] = useState({ title: "", description: "" });
   
   const { toast } = useToast();
 
@@ -440,6 +442,87 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
     }
   };
 
+  const handleYoutubeSubmit = async () => {
+    if (!youtubeUrl.trim()) return;
+
+    try {
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        toast({
+          title: "Authentication Required",
+          description: "You must be logged in to add YouTube videos",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Extract video ID from YouTube URL
+      const videoId = extractYoutubeVideoId(youtubeUrl);
+      if (!videoId) {
+        toast({
+          title: "Invalid URL",
+          description: "Please enter a valid YouTube video URL",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Add to files table
+      const { data: fileData, error: fileError } = await supabase
+        .from('files')
+        .insert({
+          user_id: user.id,
+          name: youtubeForm.title || "YouTube Video",
+          type: "video",
+          size: 0,
+          url: youtubeUrl,
+          bucket_name: "YouTube",
+          file_path: "YouTube Video",
+        })
+        .select()
+        .single();
+
+      if (fileError) throw fileError;
+
+      const newVideo: FileItem = {
+        id: fileData.id,
+        name: fileData.name,
+        type: "video",
+        size: 0,
+        uploadedAt: new Date(fileData.created_at).toISOString().split('T')[0],
+        url: youtubeUrl,
+      };
+
+      onFileUpload([newVideo]);
+      setYoutubeUrl("");
+      setYoutubeForm({ title: "", description: "" });
+
+      toast({
+        title: "YouTube Video Added",
+        description: "Video link saved successfully",
+      });
+    } catch (error) {
+      console.error("YouTube submission error:", error);
+      toast({
+        title: "Submission Failed",
+        description: "Failed to add YouTube video. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const extractYoutubeVideoId = (url: string): string | null => {
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]+)/,
+    ];
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match) return match[1];
+    }
+    return null;
+  };
+
   const getFileType = (filename: string): string => {
     const extension = filename.split('.').pop()?.toLowerCase();
     switch (extension) {
@@ -460,6 +543,14 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
       case 'ppt':
       case 'pptx':
         return 'presentation';
+      case 'mp3':
+      case 'wav':
+      case 'ogg':
+      case 'm4a':
+      case 'aac':
+      case 'flac':
+      case 'wma':
+        return 'audio';
       default:
         return 'file';
     }
@@ -520,12 +611,13 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
         </div>
 
         <Tabs defaultValue="files" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 gap-1 h-auto p-1">
+          <TabsList className="grid w-full grid-cols-3 gap-1 h-auto p-1">
             <TabsTrigger value="files" className="text-xs">Files</TabsTrigger>
             <TabsTrigger value="folder" className="text-xs">Folder</TabsTrigger>
             <TabsTrigger value="drive-file" className="text-xs">Drive File</TabsTrigger>
             <TabsTrigger value="drive-folder" className="text-xs">Drive Folder</TabsTrigger>
-            <TabsTrigger value="image-links" className="text-xs col-span-2">Images</TabsTrigger>
+            <TabsTrigger value="image-links" className="text-xs">Images</TabsTrigger>
+            <TabsTrigger value="youtube" className="text-xs">YouTube</TabsTrigger>
           </TabsList>
 
           {/* Files Upload Tab */}
@@ -758,6 +850,42 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
               <p className="text-xs text-muted-foreground flex items-center">
                 <Image className="w-3 h-3 mr-1" />
                 Add images from any website URL
+              </p>
+            </div>
+          </TabsContent>
+
+          {/* YouTube Video Tab */}
+          <TabsContent value="youtube" className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="youtube-title">Video Title</Label>
+              <Input
+                id="youtube-title"
+                placeholder="Enter video title..."
+                value={youtubeForm.title}
+                onChange={(e) => setYoutubeForm({ ...youtubeForm, title: e.target.value })}
+                className="text-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex space-x-2">
+                <Input
+                  placeholder="Paste YouTube video URL..."
+                  value={youtubeUrl}
+                  onChange={(e) => setYoutubeUrl(e.target.value)}
+                  className="flex-1 text-sm"
+                />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleYoutubeSubmit}
+                  disabled={!youtubeUrl.trim()}
+                >
+                  <Youtube className="w-4 h-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground flex items-center">
+                <Youtube className="w-3 h-3 mr-1" />
+                Add YouTube videos to play in the preview
               </p>
             </div>
           </TabsContent>

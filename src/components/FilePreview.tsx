@@ -1,14 +1,13 @@
 import { FileItem } from "./FileManager";
-import { Download, FileText, Eye, ExternalLink, FolderOpen, Presentation, Maximize, Share2, Loader2 } from "lucide-react";
+import { Download, FileText, Eye, ExternalLink, FolderOpen, Presentation, Maximize, Share2, Loader2, Music, Play, Youtube } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { formatFileSize, isPowerPointFile, isWordFile, isExcelFile } from "@/lib/fileUtils";
+import { formatFileSize, isPowerPointFile, isWordFile, isExcelFile, isAudioFile, isYouTubeUrl, extractYouTubeVideoId } from "@/lib/fileUtils";
 import { saveAs } from "file-saver";
 import { FolderCarousel } from "./FolderCarousel";
 import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
 interface FilePreviewProps {
   file: FileItem | null;
   onDelete: (id: string) => void;
@@ -453,6 +452,103 @@ export const FilePreview = ({ file, onDelete, isAdmin }: FilePreviewProps) => {
             </div>
           </div>
         );
+
+      case "audio":
+        return (
+          <div className="h-full bg-card rounded-lg border border-border overflow-hidden">
+            <div className="h-full flex flex-col">
+              <div className="flex items-center justify-between p-4 border-b border-border bg-muted/30">
+                <div className="flex items-center space-x-2">
+                  <Music className="w-5 h-5 text-purple-500" />
+                  <span className="font-medium text-sm">Audio Player</span>
+                </div>
+                <div className="flex space-x-2">
+                  <Button 
+                    variant="secondary" 
+                    size="sm"
+                    onClick={() => window.open(file.url, '_blank')}
+                  >
+                    <ExternalLink className="w-4 h-4 mr-1" />
+                    Open
+                  </Button>
+                  {isAdmin && (
+                    <Button 
+                      variant="destructive" 
+                      size="sm" 
+                      onClick={() => handleDelete(file.id)}
+                    >
+                      Delete
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <div className="flex-1 bg-muted/10 p-8 overflow-auto">
+                <div className="h-full flex flex-col items-center justify-center">
+                  <div className="w-32 h-32 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mb-6 shadow-lg">
+                    <Music className="w-16 h-16 text-white" />
+                  </div>
+                  <h3 className="text-lg font-medium mb-4 text-center">{file.name}</h3>
+                  <audio
+                    controls
+                    className="w-full max-w-md"
+                    src={file.url}
+                  >
+                    Your browser does not support the audio element.
+                  </audio>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case "video":
+        const youtubeId = file.url ? extractYouTubeVideoId(file.url) : null;
+        if (youtubeId) {
+          return (
+            <div className="h-full bg-card rounded-lg border border-border overflow-hidden">
+              <div className="h-full flex flex-col">
+                <div className="flex items-center justify-between p-4 border-b border-border bg-muted/30">
+                  <div className="flex items-center space-x-2">
+                    <Youtube className="w-5 h-5 text-red-500" />
+                    <span className="font-medium text-sm">YouTube Video</span>
+                  </div>
+                  <div className="flex space-x-2">
+                    <Button 
+                      variant="secondary" 
+                      size="sm"
+                      onClick={() => window.open(file.url, '_blank')}
+                    >
+                      <ExternalLink className="w-4 h-4 mr-1" />
+                      Open on YouTube
+                    </Button>
+                    {isAdmin && (
+                      <Button 
+                        variant="destructive" 
+                        size="sm" 
+                        onClick={() => handleDelete(file.id)}
+                      >
+                        Delete
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <div className="flex-1 bg-muted/10 p-4 overflow-auto">
+                  <div className="h-full w-full">
+                    <iframe
+                      src={`https://www.youtube.com/embed/${youtubeId}`}
+                      title={file.name}
+                      className="w-full h-full border-none rounded-lg"
+                      style={{ height: '100%', minHeight: '400px' }}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        }
+        return null;
 
       default:
         return (
