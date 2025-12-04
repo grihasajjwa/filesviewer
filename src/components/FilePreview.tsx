@@ -368,6 +368,56 @@ export const FilePreview = ({ file, onDelete, isAdmin }: FilePreviewProps) => {
       );
     }
 
+    // Check if it's an audio file by extension (fallback for files with generic type)
+    if (isAudioFile(file.name)) {
+      return (
+        <div className="h-full bg-card rounded-lg border border-border overflow-hidden">
+          <div className="h-full flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-border bg-muted/30">
+              <div className="flex items-center space-x-2">
+                <Music className="w-5 h-5 text-purple-500" />
+                <span className="font-medium text-sm">Audio Player</span>
+              </div>
+              <div className="flex space-x-2">
+                <Button 
+                  variant="secondary" 
+                  size="sm"
+                  onClick={() => window.open(file.url, '_blank')}
+                >
+                  <ExternalLink className="w-4 h-4 mr-1" />
+                  Open
+                </Button>
+                {isAdmin && (
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    onClick={() => handleDelete(file.id)}
+                  >
+                    Delete
+                  </Button>
+                )}
+              </div>
+            </div>
+            <div className="flex-1 bg-muted/10 p-8 overflow-auto">
+              <div className="h-full flex flex-col items-center justify-center">
+                <div className="w-32 h-32 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mb-6 shadow-lg">
+                  <Music className="w-16 h-16 text-white" />
+                </div>
+                <h3 className="text-lg font-medium mb-4 text-center">{file.name}</h3>
+                <audio
+                  controls
+                  className="w-full max-w-md"
+                  src={file.url}
+                >
+                  Your browser does not support the audio element.
+                </audio>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     switch (file.type) {
       case "pdf":
         return (
