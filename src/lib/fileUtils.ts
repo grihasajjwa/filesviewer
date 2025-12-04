@@ -42,3 +42,28 @@ export const isExcelFile = (filename: string): boolean => {
   const excelExtensions = ["xls", "xlsx", "xlsm", "csv"];
   return excelExtensions.includes(getFileExtension(filename));
 };
+
+export const isAudioFile = (filename: string): boolean => {
+  const audioExtensions = ["mp3", "wav", "ogg", "m4a", "aac", "flac", "wma"];
+  return audioExtensions.includes(getFileExtension(filename));
+};
+
+export const isYouTubeUrl = (url: string): boolean => {
+  const youtubePatterns = [
+    /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=[\w-]+/,
+    /(?:https?:\/\/)?(?:www\.)?youtu\.be\/[\w-]+/,
+    /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/[\w-]+/,
+  ];
+  return youtubePatterns.some(pattern => pattern.test(url));
+};
+
+export const extractYouTubeVideoId = (url: string): string | null => {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]+)/,
+  ];
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
+};
