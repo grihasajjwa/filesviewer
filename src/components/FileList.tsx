@@ -1,9 +1,10 @@
-import { Search, File, FileText, Image, FileSpreadsheet, Presentation, Folder, Globe } from "lucide-react";
+import { Search, File, FileText, Image, FileSpreadsheet, Presentation, Folder, Globe, Music, Play, Youtube } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { FileItem } from "./FileManager";
 import { formatFileSize } from "@/lib/fileUtils";
 import { StatusBadge } from "./StatusBadge";
+import { useState, useRef } from "react";
 
 interface FileListProps {
   files: FileItem[];
@@ -27,6 +28,10 @@ const getFileIcon = (type: string) => {
       return <Presentation className="w-5 h-5 text-warning" />;
     case "folder":
       return <Folder className="w-5 h-5 text-blue-500" />;
+    case "audio":
+      return <Music className="w-5 h-5 text-purple-500" />;
+    case "video":
+      return <Youtube className="w-5 h-5 text-red-500" />;
     default:
       return <File className="w-5 h-5 text-muted-foreground" />;
   }
@@ -46,6 +51,34 @@ export const FileList = ({
   searchQuery,
   onSearchChange,
 }: FileListProps) => {
+  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const handlePlayAudio = (e: React.MouseEvent, file: FileItem) => {
+    e.stopPropagation();
+    
+    if (playingAudioId === file.id) {
+      // Stop playing
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      setPlayingAudioId(null);
+    } else {
+      // Stop previous audio if playing
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      
+      // Play new audio
+      const audio = new Audio(file.url);
+      audio.onended = () => setPlayingAudioId(null);
+      audio.play();
+      audioRef.current = audio;
+      setPlayingAudioId(file.id);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Search Bar */}
@@ -103,6 +136,19 @@ export const FileList = ({
                       <span className="text-xs text-muted-foreground">
                         {new Date(file.uploadedAt).toLocaleDateString()}
                       </span>
+                      {file.type === 'audio' && (
+                        <button
+                          onClick={(e) => handlePlayAudio(e, file)}
+                          className={`ml-2 p-1 rounded-full transition-colors ${
+                            playingAudioId === file.id 
+                              ? 'bg-purple-500 text-white' 
+                              : 'bg-purple-100 text-purple-600 hover:bg-purple-200'
+                          }`}
+                          title={playingAudioId === file.id ? "Stop" : "Play"}
+                        >
+                          <Play className="w-3 h-3" />
+                        </button>
+                      )}
                     </div>
                     {file.drive_link && (
                       <a
