@@ -1,10 +1,23 @@
-import { Search, File, FileText, Image, FileSpreadsheet, Presentation, Folder, Globe, Music, Play, Youtube } from "lucide-react";
+import { Search, File, FileText, Image, FileSpreadsheet, Presentation, Folder, Globe, Music, Play, Youtube, MoreVertical, Pencil } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { FileItem } from "./FileManager";
 import { formatFileSize } from "@/lib/fileUtils";
 import { StatusBadge } from "./StatusBadge";
 import { useState, useRef } from "react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 interface FileListProps {
   files: FileItem[];
@@ -12,6 +25,8 @@ interface FileListProps {
   onFileSelect: (file: FileItem) => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
+  isAdmin?: boolean;
+  onRenameFile?: (fileId: string, newName: string) => void;
 }
 
 const getFileIcon = (type: string) => {
@@ -50,9 +65,30 @@ export const FileList = ({
   onFileSelect,
   searchQuery,
   onSearchChange,
+  isAdmin = false,
+  onRenameFile,
 }: FileListProps) => {
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [renamingFile, setRenamingFile] = useState<FileItem | null>(null);
+  const [newFileName, setNewFileName] = useState("");
+
+  const handleRenameClick = (e: React.MouseEvent, file: FileItem) => {
+    e.stopPropagation();
+    setRenamingFile(file);
+    setNewFileName(file.name);
+    setRenameDialogOpen(true);
+  };
+
+  const handleRenameSubmit = () => {
+    if (renamingFile && newFileName.trim() && onRenameFile) {
+      onRenameFile(renamingFile.id, newFileName.trim());
+    }
+    setRenameDialogOpen(false);
+    setRenamingFile(null);
+    setNewFileName("");
+  };
 
   const handlePlayAudio = (e: React.MouseEvent, file: FileItem) => {
     e.stopPropagation();
@@ -107,78 +143,127 @@ export const FileList = ({
             </div>
           ) : (
             files.map((file) => (
-              <Button
-                key={file.id}
-                variant="ghost"
-                onClick={() => onFileSelect(file)}
-                className={`w-full p-3 h-auto justify-start rounded-lg transition-all duration-200 ${
-                  selectedFile?.id === file.id
-                    ? "bg-accent text-accent-foreground shadow-sm"
-                    : "hover:bg-surface-hover"
-                }`}
-              >
-                <div className="flex items-start space-x-3 w-full">
-                  <div className="flex-shrink-0 mt-1">
-                    {getFileIcon(file.type)}
-                  </div>
-                  <div className="flex-1 min-w-0 text-left">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <p className="font-medium text-sm truncate">
-                        {file.name}
-                      </p>
-                      <StatusBadge type={getBadgeType(file)} />
+              <div key={file.id} className="relative group">
+                <Button
+                  variant="ghost"
+                  onClick={() => onFileSelect(file)}
+                  className={`w-full p-3 h-auto justify-start rounded-lg transition-all duration-200 ${
+                    selectedFile?.id === file.id
+                      ? "bg-accent text-accent-foreground shadow-sm"
+                      : "hover:bg-surface-hover"
+                  } ${isAdmin ? 'pr-10' : ''}`}
+                >
+                  <div className="flex items-start space-x-3 w-full">
+                    <div className="flex-shrink-0 mt-1">
+                      {getFileIcon(file.type)}
                     </div>
-                    <div className="flex items-center space-x-2 mt-1">
-                      <span className="text-xs text-muted-foreground">
-                        {file.type === 'folder' ? 'Folder' : formatFileSize(file.size)}
-                      </span>
-                      <span className="text-xs text-muted-foreground">•</span>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(file.uploadedAt).toLocaleDateString()}
-                      </span>
-                      {file.type === 'audio' && (
-                        <button
-                          onClick={(e) => handlePlayAudio(e, file)}
-                          className={`ml-2 p-1 rounded-full transition-colors ${
-                            playingAudioId === file.id 
-                              ? 'bg-purple-500 text-white' 
-                              : 'bg-purple-100 text-purple-600 hover:bg-purple-200'
-                          }`}
-                          title={playingAudioId === file.id ? "Stop" : "Play"}
+                    <div className="flex-1 min-w-0 text-left">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <p className="font-medium text-sm truncate">
+                          {file.name}
+                        </p>
+                        <StatusBadge type={getBadgeType(file)} />
+                      </div>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <span className="text-xs text-muted-foreground">
+                          {file.type === 'folder' ? 'Folder' : formatFileSize(file.size)}
+                        </span>
+                        <span className="text-xs text-muted-foreground">•</span>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(file.uploadedAt).toLocaleDateString()}
+                        </span>
+                        {file.type === 'audio' && (
+                          <button
+                            onClick={(e) => handlePlayAudio(e, file)}
+                            className={`ml-2 p-1 rounded-full transition-colors ${
+                              playingAudioId === file.id 
+                                ? 'bg-purple-500 text-white' 
+                                : 'bg-purple-100 text-purple-600 hover:bg-purple-200'
+                            }`}
+                            title={playingAudioId === file.id ? "Stop" : "Play"}
+                          >
+                            <Play className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                      {file.drive_link && (
+                        <a
+                          href={file.drive_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-primary underline mt-1 block hover:text-primary/80"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          <Play className="w-3 h-3" />
-                        </button>
+                          Open in Google Drive
+                        </a>
+                      )}
+                      {file.drive_folder_link && (
+                        <a
+                          href={file.drive_folder_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-primary underline mt-1 block hover:text-primary/80"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          Open Folder in Google Drive
+                        </a>
                       )}
                     </div>
-                    {file.drive_link && (
-                      <a
-                        href={file.drive_link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-primary underline mt-1 block hover:text-primary/80"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        Open in Google Drive
-                      </a>
-                    )}
-                    {file.drive_folder_link && (
-                      <a
-                        href={file.drive_folder_link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-primary underline mt-1 block hover:text-primary/80"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        Open Folder in Google Drive
-                      </a>
-                    )}
                   </div>
-                </div>
-              </Button>
+                </Button>
+                
+                {isAdmin && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="bg-popover border border-border z-50">
+                      <DropdownMenuItem onClick={(e) => handleRenameClick(e as any, file)}>
+                        <Pencil className="w-4 h-4 mr-2" />
+                        Rename
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
             ))
           )}
         </div>
       </div>
+
+      {/* Rename Dialog */}
+      <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Rename File</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              value={newFileName}
+              onChange={(e) => setNewFileName(e.target.value)}
+              placeholder="Enter new file name"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleRenameSubmit();
+                }
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleRenameSubmit} disabled={!newFileName.trim()}>
+              Rename
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -320,6 +320,36 @@ export const FileManager = () => {
     }
   };
 
+  const handleRenameFile = async (fileId: string, newName: string) => {
+    if (!isAdmin) {
+      toast.error('Only admins can rename files.');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('files')
+        .update({ name: newName })
+        .eq('id', fileId);
+
+      if (error) {
+        console.error('Error renaming file:', error);
+        toast.error('Failed to rename file.');
+        return;
+      }
+
+      toast.success('File renamed successfully.');
+
+      // Refresh the file list
+      if (user) {
+        await fetchFiles(user.id);
+      }
+    } catch (err) {
+      console.error('Unexpected error renaming file:', err);
+      toast.error('An unexpected error occurred.');
+    }
+  };
+
   // Initial auth check
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -370,6 +400,8 @@ export const FileManager = () => {
                 onFileSelect={setSelectedFile}
                 searchQuery={searchQuery}
                 onSearchChange={setSearchQuery}
+                isAdmin={isAdmin}
+                onRenameFile={handleRenameFile}
               />
             </div>
           </SidebarContent>
