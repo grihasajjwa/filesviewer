@@ -408,39 +408,40 @@ export const FileManager = () => {
         </Sidebar>
 
         {/* Main Content */}
-        <main className="flex-1 flex flex-col">
+        <main className="flex-1 flex flex-col min-w-0">
           {/* Header */}
           <header className="bg-card border-b border-border shadow-sm">
-            <div className="flex items-center justify-between px-6 py-4">
-              <div className="flex items-center space-x-3">
-                <SidebarTrigger className="mr-2" />
-                <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
-                  <span className="text-primary-foreground font-bold text-sm">FM</span>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-3 sm:px-6 py-3 sm:py-4 gap-3 sm:gap-0">
+              <div className="flex items-center space-x-2 sm:space-x-3">
+                <SidebarTrigger className="mr-1 sm:mr-2" />
+                <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-primary rounded-lg flex items-center justify-center flex-shrink-0">
+                  <span className="text-primary-foreground font-bold text-xs sm:text-sm">FM</span>
                 </div>
-                <div>
-                  <h1 className="text-xl font-semibold text-foreground">File Manager</h1>
-                  <p className="text-sm text-muted-foreground">Organize and preview your files</p>
+                <div className="min-w-0">
+                  <h1 className="text-base sm:text-xl font-semibold text-foreground truncate">File Manager</h1>
+                  <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">Organize and preview your files</p>
                 </div>
               </div>
               
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2 sm:space-x-4 justify-end">
                 <Auth user={user} onAuthChange={handleAuthChange} />
-                <div className="h-6 w-px bg-border" />
+                <div className="h-6 w-px bg-border hidden sm:block" />
                 <Button
                   variant={isAdmin ? "default" : "secondary"}
                   size="sm"
                   onClick={() => setIsAdmin(!isAdmin)}
-                  className="flex items-center space-x-2"
+                  className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm px-2 sm:px-3"
                 >
-                  {isAdmin ? <Shield className="w-4 h-4" /> : <User className="w-4 h-4" />}
-                  <span>{isAdmin ? "Admin Mode" : "View Mode"}</span>
+                  {isAdmin ? <Shield className="w-3 h-3 sm:w-4 sm:h-4" /> : <User className="w-3 h-3 sm:w-4 sm:h-4" />}
+                  <span className="hidden xs:inline">{isAdmin ? "Admin" : "View"}</span>
+                  <span className="xs:hidden">{isAdmin ? "A" : "V"}</span>
                 </Button>
               </div>
             </div>
           </header>
 
           {/* File Preview */}
-          <div className="flex-1 bg-surface overflow-y-auto">
+          <div className="flex-1 bg-surface overflow-y-auto p-2 sm:p-4">
             <FilePreview 
               file={selectedFile} 
               onDelete={handleDelete} 
