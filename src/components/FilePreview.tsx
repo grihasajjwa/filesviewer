@@ -559,17 +559,27 @@ export const FilePreview = ({ file, onDelete, isAdmin }: FilePreviewProps) => {
         return null;
 
       case "facebook":
-        // Use drive_link if available, otherwise fall back to url
-        const facebookOriginalUrl = file.drive_link || file.url;
+        // Facebook URL is stored directly in file.url
+        const handleOpenFacebook = () => {
+          const fbUrl = file.url;
+          console.log("Opening Facebook URL:", fbUrl);
+          if (fbUrl) {
+            window.open(fbUrl, '_blank');
+          }
+        };
         return (
           <div className="h-full bg-card rounded-lg border border-border overflow-hidden">
             <div className="h-full flex flex-col">
               <PreviewToolbar icon={Facebook} iconClass="text-blue-600" title="Facebook Post">
-                <ActionButton 
-                  icon={ExternalLink}
-                  label="Open on Facebook" 
-                  onClick={() => window.open(facebookOriginalUrl, '_blank')}
-                />
+                <Button 
+                  variant="secondary" 
+                  size="sm"
+                  onClick={handleOpenFacebook}
+                  className="text-xs h-7 px-2 sm:h-8 sm:px-3 sm:text-sm"
+                >
+                  <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                  <span className="hidden xs:inline">Open on Facebook</span>
+                </Button>
                 {isAdmin && (
                   <ActionButton 
                     icon={ExternalLink}
