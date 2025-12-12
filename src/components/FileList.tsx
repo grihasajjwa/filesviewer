@@ -1,4 +1,4 @@
-import { Search, File, FileText, Image, FileSpreadsheet, Presentation, Folder, Globe, Music, Play, Youtube, MoreVertical, Pencil } from "lucide-react";
+import { Search, File, FileText, Image, FileSpreadsheet, Presentation, Folder, Globe, Music, Play, Youtube, MoreVertical, Pencil, Facebook } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { FileItem } from "./FileManager";
@@ -47,12 +47,15 @@ const getFileIcon = (type: string) => {
       return <Music className="w-5 h-5 text-purple-500" />;
     case "video":
       return <Youtube className="w-5 h-5 text-red-500" />;
+    case "facebook":
+      return <Facebook className="w-5 h-5 text-blue-600" />;
     default:
       return <File className="w-5 h-5 text-muted-foreground" />;
   }
 };
 
 const getBadgeType = (file: FileItem) => {
+  if (file.type === 'facebook') return 'facebook';
   if (file.drive_link) return 'drive';
   if (file.drive_folder_link) return 'folder';
   if (file.url && file.url.startsWith('http') && !file.url.includes('supabase')) return 'internet';
