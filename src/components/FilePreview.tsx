@@ -559,6 +559,8 @@ export const FilePreview = ({ file, onDelete, isAdmin }: FilePreviewProps) => {
         return null;
 
       case "facebook":
+        // Use drive_link if available, otherwise fall back to url
+        const facebookOriginalUrl = file.drive_link || file.url;
         return (
           <div className="h-full bg-card rounded-lg border border-border overflow-hidden">
             <div className="h-full flex flex-col">
@@ -566,7 +568,7 @@ export const FilePreview = ({ file, onDelete, isAdmin }: FilePreviewProps) => {
                 <ActionButton 
                   icon={ExternalLink}
                   label="Open on Facebook" 
-                  onClick={() => window.open(file.url, '_blank')}
+                  onClick={() => window.open(facebookOriginalUrl, '_blank')}
                 />
                 {isAdmin && (
                   <ActionButton 

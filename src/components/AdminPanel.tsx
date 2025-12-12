@@ -695,15 +695,19 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
         </div>
 
         <Tabs defaultValue="files" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 gap-1 h-auto p-1">
-            <TabsTrigger value="files" className="text-xs">Files</TabsTrigger>
-            <TabsTrigger value="folder" className="text-xs">Folder</TabsTrigger>
-            <TabsTrigger value="drive-file" className="text-xs">Drive File</TabsTrigger>
-            <TabsTrigger value="drive-folder" className="text-xs">Drive Folder</TabsTrigger>
-            <TabsTrigger value="image-links" className="text-xs">Images</TabsTrigger>
-            <TabsTrigger value="youtube" className="text-xs">YouTube</TabsTrigger>
-            <TabsTrigger value="facebook" className="text-xs">Facebook</TabsTrigger>
-          </TabsList>
+          <div className="space-y-1 mb-4">
+            <TabsList className="grid w-full grid-cols-4 gap-1 h-auto p-1">
+              <TabsTrigger value="files" className="text-xs">Files</TabsTrigger>
+              <TabsTrigger value="folder" className="text-xs">Folder</TabsTrigger>
+              <TabsTrigger value="drive-file" className="text-xs">Drive File</TabsTrigger>
+              <TabsTrigger value="drive-folder" className="text-xs">Drive Folder</TabsTrigger>
+            </TabsList>
+            <TabsList className="grid w-full grid-cols-3 gap-1 h-auto p-1">
+              <TabsTrigger value="image-links" className="text-xs">Images</TabsTrigger>
+              <TabsTrigger value="youtube" className="text-xs">YouTube</TabsTrigger>
+              <TabsTrigger value="facebook" className="text-xs">Facebook</TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Files Upload Tab */}
           <TabsContent value="files" className="space-y-3">
