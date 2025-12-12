@@ -1,5 +1,5 @@
 import { FileItem } from "./FileManager";
-import { Download, FileText, Eye, ExternalLink, FolderOpen, Presentation, Maximize, Share2, Loader2, Music, Play, Youtube } from "lucide-react";
+import { Download, FileText, Eye, ExternalLink, FolderOpen, Presentation, Maximize, Share2, Loader2, Music, Play, Youtube, Facebook } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatFileSize, isPowerPointFile, isWordFile, isExcelFile, isAudioFile, isYouTubeUrl, extractYouTubeVideoId } from "@/lib/fileUtils";
@@ -557,6 +557,44 @@ export const FilePreview = ({ file, onDelete, isAdmin }: FilePreviewProps) => {
           );
         }
         return null;
+
+      case "facebook":
+        return (
+          <div className="h-full bg-card rounded-lg border border-border overflow-hidden">
+            <div className="h-full flex flex-col">
+              <PreviewToolbar icon={Facebook} iconClass="text-blue-600" title="Facebook Post">
+                <ActionButton 
+                  icon={ExternalLink}
+                  label="Open on Facebook" 
+                  onClick={() => window.open(file.url, '_blank')}
+                />
+                {isAdmin && (
+                  <ActionButton 
+                    icon={ExternalLink}
+                    label="Delete" 
+                    onClick={() => handleDelete(file.id)}
+                    variant="destructive"
+                  />
+                )}
+              </PreviewToolbar>
+              <div className="flex-1 bg-muted/10 p-2 sm:p-4 overflow-auto">
+                <div className="h-full flex items-center justify-center">
+                  <div className="w-full max-w-2xl">
+                    <iframe
+                      src={`https://www.facebook.com/plugins/post.php?href=${encodeURIComponent(file.url)}&show_text=true&width=500`}
+                      width="500"
+                      height="600"
+                      className="w-full border-none rounded-lg"
+                      style={{ minHeight: '400px', maxWidth: '100%' }}
+                      allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
 
       default:
         return (

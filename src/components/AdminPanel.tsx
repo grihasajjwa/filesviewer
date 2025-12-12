@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Upload, Link2, Plus, FolderOpen, FileText, Image, Globe, Youtube } from "lucide-react";
+import { Upload, Link2, Plus, FolderOpen, FileText, Image, Globe, Youtube, Facebook } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -19,6 +19,7 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
   const [driveFolderLink, setDriveFolderLink] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [facebookUrl, setFacebookUrl] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [isFolderUploading, setIsFolderUploading] = useState(false);
   
@@ -29,6 +30,7 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
   const [driveFolderForm, setDriveFolderForm] = useState({ title: "", description: "" });
   const [imageLinksForm, setImageLinksForm] = useState({ title: "", description: "" });
   const [youtubeForm, setYoutubeForm] = useState({ title: "", description: "" });
+  const [facebookForm, setFacebookForm] = useState({ title: "", description: "" });
   
   const { toast } = useToast();
 
@@ -523,6 +525,88 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
     return null;
   };
 
+  const extractFacebookPostId = (url: string): string | null => {
+    const patterns = [
+      /facebook\.com\/.*\/videos\/(\d+)/,
+      /facebook\.com\/.*\/posts\/(\d+)/,
+      /facebook\.com\/watch\/\?v=(\d+)/,
+      /facebook\.com\/reel\/(\d+)/,
+      /fb\.watch\/([\w]+)/,
+    ];
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match) return match[1];
+    }
+    return url; // Return URL itself as fallback for embedding
+  };
+
+  const handleFacebookSubmit = async () => {
+    if (!facebookUrl.trim()) return;
+
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        toast({
+          title: "Authentication Required",
+          description: "You must be logged in to add Facebook posts",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const postId = extractFacebookPostId(facebookUrl);
+      if (!postId) {
+        toast({
+          title: "Invalid URL",
+          description: "Please enter a valid Facebook post or video URL",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { data: fileData, error: fileError } = await supabase
+        .from('files')
+        .insert({
+          user_id: user.id,
+          name: facebookForm.title || "Facebook Post",
+          type: "facebook",
+          size: 0,
+          url: facebookUrl,
+          bucket_name: "Facebook",
+          file_path: "Facebook Post",
+        })
+        .select()
+        .single();
+
+      if (fileError) throw fileError;
+
+      const newPost: FileItem = {
+        id: fileData.id,
+        name: fileData.name,
+        type: "facebook",
+        size: 0,
+        uploadedAt: new Date(fileData.created_at).toISOString().split('T')[0],
+        url: facebookUrl,
+      };
+
+      onFileUpload([newPost]);
+      setFacebookUrl("");
+      setFacebookForm({ title: "", description: "" });
+
+      toast({
+        title: "Facebook Post Added",
+        description: "Post link saved successfully",
+      });
+    } catch (error) {
+      console.error("Facebook submission error:", error);
+      toast({
+        title: "Submission Failed",
+        description: "Failed to add Facebook post. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getFileType = (filename: string): string => {
     const extension = filename.split('.').pop()?.toLowerCase();
     switch (extension) {
@@ -611,13 +695,14 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
         </div>
 
         <Tabs defaultValue="files" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 gap-1 h-auto p-1">
+          <TabsList className="grid w-full grid-cols-4 gap-1 h-auto p-1">
             <TabsTrigger value="files" className="text-xs">Files</TabsTrigger>
             <TabsTrigger value="folder" className="text-xs">Folder</TabsTrigger>
             <TabsTrigger value="drive-file" className="text-xs">Drive File</TabsTrigger>
             <TabsTrigger value="drive-folder" className="text-xs">Drive Folder</TabsTrigger>
             <TabsTrigger value="image-links" className="text-xs">Images</TabsTrigger>
             <TabsTrigger value="youtube" className="text-xs">YouTube</TabsTrigger>
+            <TabsTrigger value="facebook" className="text-xs">Facebook</TabsTrigger>
           </TabsList>
 
           {/* Files Upload Tab */}
@@ -886,6 +971,42 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
               <p className="text-xs text-muted-foreground flex items-center">
                 <Youtube className="w-3 h-3 mr-1" />
                 Add YouTube videos to play in the preview
+              </p>
+            </div>
+          </TabsContent>
+
+          {/* Facebook Post Tab */}
+          <TabsContent value="facebook" className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="facebook-title">Post Title</Label>
+              <Input
+                id="facebook-title"
+                placeholder="Enter post title..."
+                value={facebookForm.title}
+                onChange={(e) => setFacebookForm({ ...facebookForm, title: e.target.value })}
+                className="text-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex space-x-2">
+                <Input
+                  placeholder="Paste Facebook post or video URL..."
+                  value={facebookUrl}
+                  onChange={(e) => setFacebookUrl(e.target.value)}
+                  className="flex-1 text-sm"
+                />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleFacebookSubmit}
+                  disabled={!facebookUrl.trim()}
+                >
+                  <Facebook className="w-4 h-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground flex items-center">
+                <Facebook className="w-3 h-3 mr-1" />
+                Add Facebook videos, reels, or posts
               </p>
             </div>
           </TabsContent>
