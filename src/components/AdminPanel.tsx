@@ -14,6 +14,11 @@ interface AdminPanelProps {
   onFileUpload: (files: FileItem[]) => void;
 }
 
+// Maximum allowed upload size: 200 MB
+export const MAX_UPLOAD_SIZE = 200 * 1024 * 1024;
+export const MAX_UPLOAD_SIZE_LABEL = "200 MB";
+
+
 export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
   const [driveFileLink, setDriveFileLink] = useState("");
   const [driveFolderLink, setDriveFolderLink] = useState("");
@@ -38,7 +43,21 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
     const files = event.target.files;
     if (!files) return;
 
+    const oversized = Array.from(files).filter((f) => f.size > MAX_UPLOAD_SIZE);
+    if (oversized.length > 0) {
+      toast({
+        title: "File too large",
+        description: `Each file must be ${MAX_UPLOAD_SIZE_LABEL} or smaller: ${oversized
+          .map((f) => f.name)
+          .join(", ")}`,
+        variant: "destructive",
+      });
+      event.target.value = "";
+      return;
+    }
+
     setIsUploading(true);
+
     
     try {
       // Get current user
@@ -119,7 +138,21 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
     const files = event.target.files;
     if (!files) return;
 
+    const oversizedFolderFiles = Array.from(files).filter((f) => f.size > MAX_UPLOAD_SIZE);
+    if (oversizedFolderFiles.length > 0) {
+      toast({
+        title: "File too large",
+        description: `Each file must be ${MAX_UPLOAD_SIZE_LABEL} or smaller: ${oversizedFolderFiles
+          .map((f) => f.name)
+          .join(", ")}`,
+        variant: "destructive",
+      });
+      event.target.value = "";
+      return;
+    }
+
     setIsFolderUploading(true);
+
     
     try {
       // Get current user
@@ -752,7 +785,9 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
                 className="hidden"
                 disabled={isUploading}
               />
+              <p className="text-xs text-muted-foreground">Max {MAX_UPLOAD_SIZE_LABEL} per file</p>
             </div>
+
           </TabsContent>
 
           {/* Folder Upload Tab */}
