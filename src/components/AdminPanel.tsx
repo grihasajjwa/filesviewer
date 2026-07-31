@@ -14,6 +14,11 @@ interface AdminPanelProps {
   onFileUpload: (files: FileItem[]) => void;
 }
 
+// Maximum allowed upload size: 200 MB
+export const MAX_UPLOAD_SIZE = 200 * 1024 * 1024;
+export const MAX_UPLOAD_SIZE_LABEL = "200 MB";
+
+
 export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
   const [driveFileLink, setDriveFileLink] = useState("");
   const [driveFolderLink, setDriveFolderLink] = useState("");
