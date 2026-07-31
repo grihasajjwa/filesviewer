@@ -330,7 +330,7 @@ export const FileManager = () => {
 
       // Refresh the file list and reset the right-side viewer
       if (user) {
-        await fetchFiles(user.id);
+        await fetchFiles(user.id, true);
       }
       setSelectedFile(null); // Clear the selected file to refresh the viewer
     } catch (err) {
@@ -361,7 +361,7 @@ export const FileManager = () => {
 
       // Refresh the file list
       if (user) {
-        await fetchFiles(user.id);
+        await fetchFiles(user.id, true);
       }
     } catch (err) {
       console.error('Unexpected error renaming file:', err);
