@@ -86,6 +86,8 @@ export const FileManager = () => {
   const fetchInProgressRef = useRef(false);
   // Ref to ensure we show the network/CORS error only once
   const networkErrorShownRef = useRef(false);
+  // Last user id we successfully loaded files for (avoids duplicate initial fetches)
+  const lastFetchedUserRef = useRef<string | null>(null);
 
   const filteredFiles = useMemo(() => {
     return files.filter(file =>
@@ -93,9 +95,15 @@ export const FileManager = () => {
     );
   }, [files, searchQuery]);
 
-  const fetchFiles = async (userId: string) => {
+  const fetchFiles = async (userId: string, force = false) => {
     if (fetchInProgressRef.current) return;
+    if (!force && lastFetchedUserRef.current === userId) {
+      setLoading(false);
+      return;
+    }
     fetchInProgressRef.current = true;
+    lastFetchedUserRef.current = userId;
+
     try {
       setLoading(true);
       const { data, error } = await supabase
