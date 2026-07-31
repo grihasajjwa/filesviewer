@@ -785,7 +785,9 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
                 className="hidden"
                 disabled={isUploading}
               />
+              <p className="text-xs text-muted-foreground">Max {MAX_UPLOAD_SIZE_LABEL} per file</p>
             </div>
+
           </TabsContent>
 
           {/* Folder Upload Tab */}
