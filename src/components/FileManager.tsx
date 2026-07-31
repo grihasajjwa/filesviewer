@@ -302,7 +302,9 @@ export const FileManager = () => {
       setIsAdmin(false);
       setFiles([]);
       setSelectedFile(null);
+      lastFetchedUserRef.current = null;
     } else {
+
       // Fetch files when user logs in
       fetchFiles(newUser.id);
     }
