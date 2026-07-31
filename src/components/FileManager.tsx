@@ -86,6 +86,8 @@ export const FileManager = () => {
   const fetchInProgressRef = useRef(false);
   // Ref to ensure we show the network/CORS error only once
   const networkErrorShownRef = useRef(false);
+  // Last user id we successfully loaded files for (avoids duplicate initial fetches)
+  const lastFetchedUserRef = useRef<string | null>(null);
 
   const filteredFiles = useMemo(() => {
     return files.filter(file =>
@@ -93,9 +95,15 @@ export const FileManager = () => {
     );
   }, [files, searchQuery]);
 
-  const fetchFiles = async (userId: string) => {
+  const fetchFiles = async (userId: string, force = false) => {
     if (fetchInProgressRef.current) return;
+    if (!force && lastFetchedUserRef.current === userId) {
+      setLoading(false);
+      return;
+    }
     fetchInProgressRef.current = true;
+    lastFetchedUserRef.current = userId;
+
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -168,34 +176,45 @@ export const FileManager = () => {
         };
       });
 
-      // For local folders, fetch their files
+      // For local folders, fetch all their files in a single query (avoids N+1 round-trips)
       const folders = formattedFiles.filter(file => file.type === "folder" && file.folder_name && !file.drive_folder_link);
-      for (const folder of folders) {
+      if (folders.length > 0) {
         try {
+          const folderNames = folders.map(f => f.folder_name as string);
           const { data: folderFiles } = await supabase
             .from('files')
             .select('*')
             .eq('user_id', userId)
-            .eq('folder_name', folder.folder_name)
+            .in('folder_name', folderNames)
             .neq('type', 'folder')
             .order('created_at', { ascending: false });
 
           if (folderFiles) {
-            folder.folderFiles = folderFiles.map(file => ({
-              id: file.id,
-              name: file.name,
-              type: file.type,
-              size: file.size,
-              uploadedAt: new Date(file.created_at).toISOString().split('T')[0],
-              url: file.url,
-              thumbnail: file.thumbnail,
-              folder_name: file.folder_name,
-            }));
+            const byFolder = new Map<string, FileItem[]>();
+            for (const file of folderFiles) {
+              const item: FileItem = {
+                id: file.id,
+                name: file.name,
+                type: file.type,
+                size: file.size,
+                uploadedAt: new Date(file.created_at).toISOString().split('T')[0],
+                url: file.url,
+                thumbnail: file.thumbnail,
+                folder_name: file.folder_name,
+              };
+              const list = byFolder.get(file.folder_name as string) ?? [];
+              list.push(item);
+              byFolder.set(file.folder_name as string, list);
+            }
+            for (const folder of folders) {
+              folder.folderFiles = byFolder.get(folder.folder_name as string) ?? [];
+            }
           }
         } catch (error) {
           console.error('Error fetching folder files:', error);
         }
       }
+
 
       setFiles(formattedFiles);
     } catch (err: any) {
@@ -283,7 +302,9 @@ export const FileManager = () => {
       setIsAdmin(false);
       setFiles([]);
       setSelectedFile(null);
+      lastFetchedUserRef.current = null;
     } else {
+
       // Fetch files when user logs in
       fetchFiles(newUser.id);
     }
@@ -311,7 +332,7 @@ export const FileManager = () => {
 
       // Refresh the file list and reset the right-side viewer
       if (user) {
-        await fetchFiles(user.id);
+        await fetchFiles(user.id, true);
       }
       setSelectedFile(null); // Clear the selected file to refresh the viewer
     } catch (err) {
@@ -342,7 +363,7 @@ export const FileManager = () => {
 
       // Refresh the file list
       if (user) {
-        await fetchFiles(user.id);
+        await fetchFiles(user.id, true);
       }
     } catch (err) {
       console.error('Unexpected error renaming file:', err);
