@@ -79,6 +79,7 @@ export const FileManager = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [files, setFiles] = useState<FileItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [hasInitializedSelection, setHasInitializedSelection] = useState(false);
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -96,11 +97,13 @@ export const FileManager = () => {
   const handleFileSelect = (file: FileItem | null) => {
     if (!file) {
       setSelectedFile(null);
+      setHasInitializedSelection(false);
       return;
     }
 
     const matchedFile = files.find((item) => item.id === file.id) ?? file;
     setSelectedFile(matchedFile);
+    setHasInitializedSelection(true);
   };
 
   const fetchFiles = async (userId: string) => {
@@ -366,19 +369,21 @@ export const FileManager = () => {
   useEffect(() => {
     if (files.length === 0) {
       setSelectedFile(null);
+      setHasInitializedSelection(false);
       return;
     }
 
-    if (!selectedFile) {
+    if (!hasInitializedSelection && !selectedFile) {
       setSelectedFile(files[0]);
+      setHasInitializedSelection(true);
       return;
     }
 
-    const stillExists = files.some((file) => file.id === selectedFile.id);
-    if (!stillExists) {
+    if (selectedFile && !files.some((file) => file.id === selectedFile.id)) {
       setSelectedFile(files[0]);
+      setHasInitializedSelection(true);
     }
-  }, [files, selectedFile]);
+  }, [files, selectedFile, hasInitializedSelection]);
 
   // Initial auth check
   useEffect(() => {
@@ -472,9 +477,10 @@ export const FileManager = () => {
 
           {/* File Preview */}
           <div className="flex-1 bg-surface overflow-y-auto p-2 sm:p-4">
-            <FilePreview 
-              file={selectedFile} 
-              onDelete={handleDelete} 
+            <FilePreview
+              key={selectedFile?.id ?? "no-selection"}
+              file={selectedFile}
+              onDelete={handleDelete}
               isAdmin={isAdmin}
             />
           </div>
