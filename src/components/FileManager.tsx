@@ -93,6 +93,16 @@ export const FileManager = () => {
     );
   }, [files, searchQuery]);
 
+  const handleFileSelect = (file: FileItem | null) => {
+    if (!file) {
+      setSelectedFile(null);
+      return;
+    }
+
+    const matchedFile = files.find((item) => item.id === file.id) ?? file;
+    setSelectedFile(matchedFile);
+  };
+
   const fetchFiles = async (userId: string) => {
     if (fetchInProgressRef.current) return;
     fetchInProgressRef.current = true;
@@ -265,12 +275,15 @@ export const FileManager = () => {
   const handleFileUpload = (newFiles: FileItem[]) => {
     setFiles((prev) => {
       const updatedFiles = [...newFiles, ...prev];
-      // Prevent redundant updates by comparing the new and previous files
       if (JSON.stringify(updatedFiles) !== JSON.stringify(prev)) {
         return updatedFiles;
       }
       return prev;
     });
+
+    if (newFiles.length > 0) {
+      setSelectedFile(newFiles[0]);
+    }
   };
 
   const handleAuthChange = (newUser: SupabaseUser | null, newSession: Session | null) => {
@@ -350,6 +363,23 @@ export const FileManager = () => {
     }
   };
 
+  useEffect(() => {
+    if (files.length === 0) {
+      setSelectedFile(null);
+      return;
+    }
+
+    if (!selectedFile) {
+      setSelectedFile(files[0]);
+      return;
+    }
+
+    const stillExists = files.some((file) => file.id === selectedFile.id);
+    if (!stillExists) {
+      setSelectedFile(files[0]);
+    }
+  }, [files, selectedFile]);
+
   // Initial auth check
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -397,7 +427,7 @@ export const FileManager = () => {
               <FileList
                 files={filteredFiles}
                 selectedFile={selectedFile}
-                onFileSelect={setSelectedFile}
+                onFileSelect={handleFileSelect}
                 searchQuery={searchQuery}
                 onSearchChange={setSearchQuery}
                 isAdmin={isAdmin}
