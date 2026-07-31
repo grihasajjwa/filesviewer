@@ -138,7 +138,21 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
     const files = event.target.files;
     if (!files) return;
 
+    const oversizedFolderFiles = Array.from(files).filter((f) => f.size > MAX_UPLOAD_SIZE);
+    if (oversizedFolderFiles.length > 0) {
+      toast({
+        title: "File too large",
+        description: `Each file must be ${MAX_UPLOAD_SIZE_LABEL} or smaller: ${oversizedFolderFiles
+          .map((f) => f.name)
+          .join(", ")}`,
+        variant: "destructive",
+      });
+      event.target.value = "";
+      return;
+    }
+
     setIsFolderUploading(true);
+
     
     try {
       // Get current user
