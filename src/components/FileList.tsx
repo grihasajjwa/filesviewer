@@ -80,28 +80,11 @@ export const FileList = ({
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [renamingFile, setRenamingFile] = useState<FileItem | null>(null);
   const [newFileName, setNewFileName] = useState("");
-  const selectDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (selectDebounceRef.current) {
-        clearTimeout(selectDebounceRef.current);
-      }
-    };
-  }, []);
 
   const handleSelect = (file: FileItem) => {
-    if (isLoading) return;
-
-    if (selectDebounceRef.current) {
-      clearTimeout(selectDebounceRef.current);
-    }
-
-    selectDebounceRef.current = setTimeout(() => {
-      onFileSelect(file);
-      if (isMobile) setOpenMobile(false);
-      selectDebounceRef.current = null;
-    }, 120);
+    if (selectedFile?.id === file.id) return;
+    onFileSelect(file);
+    if (isMobile) setOpenMobile(false);
   };
 
 
@@ -148,10 +131,7 @@ export const FileList = ({
   };
 
   return (
-    <div className="relative flex flex-col h-full" aria-busy={isLoading} aria-disabled={isLoading}>
-      {isLoading && (
-        <div className="pointer-events-none absolute inset-0 z-20 bg-muted/70" />
-      )}
+    <div className="flex flex-col h-full" aria-busy={isLoading} aria-disabled={isLoading}>
       {/* Search Bar */}
       <div className="p-4 border-b border-border">
         <div className="relative">
@@ -188,7 +168,6 @@ export const FileList = ({
                 <Button
                   variant="ghost"
                   onClick={() => handleSelect(file)}
-                  disabled={isLoading}
                   className={`w-full p-3 h-auto justify-start rounded-lg transition-all duration-200 ${
                     selectedFile?.id === file.id
                       ? "bg-accent text-accent-foreground shadow-sm"

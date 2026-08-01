@@ -90,9 +90,6 @@ export const FileManager = () => {
   const fetchInProgressRef = useRef(false);
   // Ref to ensure we show the network/CORS error only once
   const networkErrorShownRef = useRef(false);
-  const previewSwitchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const previewSwitchIdRef = useRef(0);
-  const pendingPreviewIdRef = useRef<string | null>(null);
 
   const filteredFiles = useMemo(() => {
     return files.filter(file =>
@@ -101,16 +98,7 @@ export const FileManager = () => {
   }, [files, searchQuery]);
 
   const handleFileSelect = (file: FileItem | null) => {
-    if (previewSwitchTimerRef.current) {
-      clearTimeout(previewSwitchTimerRef.current);
-      previewSwitchTimerRef.current = null;
-    }
-
-    previewSwitchIdRef.current += 1;
-    const currentPreviewSwitchId = previewSwitchIdRef.current;
-
     if (!file) {
-      pendingPreviewIdRef.current = null;
       setPreviewSwitchKey((prev) => prev + 1);
       setSelectedFile(null);
       setIsPreviewSwitching(false);
@@ -119,26 +107,12 @@ export const FileManager = () => {
     }
 
     const matchedFile = files.find((item) => item.id === file.id) ?? file;
-    const isSameCurrentFile = selectedFile?.id === matchedFile.id && !isPreviewSwitching;
-    const isSamePendingFile = pendingPreviewIdRef.current === matchedFile.id && isPreviewSwitching;
-    if (isSameCurrentFile || isSamePendingFile) return;
+    if (selectedFile?.id === matchedFile.id && !isPreviewSwitching) return;
 
-    pendingPreviewIdRef.current = matchedFile.id;
     setPreviewSwitchKey((prev) => prev + 1);
     setIsPreviewSwitching(true);
-    setSelectedFile(null);
-    setHasInitializedSelection(false);
-
-    previewSwitchTimerRef.current = setTimeout(() => {
-      previewSwitchTimerRef.current = null;
-      if (previewSwitchIdRef.current !== currentPreviewSwitchId) {
-        return;
-      }
-      pendingPreviewIdRef.current = null;
-      setSelectedFile(matchedFile);
-      setHasInitializedSelection(true);
-      setIsPreviewSwitching(false);
-    }, 120);
+    setSelectedFile(matchedFile);
+    setHasInitializedSelection(true);
   };
 
   const fetchFiles = async (userId: string) => {
@@ -457,13 +431,12 @@ export const FileManager = () => {
   }, []);
 
   useEffect(() => {
-    return () => {
-      if (previewSwitchTimerRef.current) {
-        clearTimeout(previewSwitchTimerRef.current);
-      }
-      previewSwitchIdRef.current += 1;
-    };
-  }, []);
+    if (!isPreviewSwitching) return;
+    const timer = setTimeout(() => {
+      setIsPreviewSwitching(false);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [isPreviewSwitching]);
 
   // Show auth screen if not logged in
   if (!user) {
