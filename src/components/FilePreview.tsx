@@ -13,9 +13,10 @@ interface FilePreviewProps {
   file: FileItem | null;
   onDelete: (id: string) => void;
   isAdmin: boolean;
+  isLoading?: boolean;
 }
 
-export const FilePreview = ({ file, onDelete, isAdmin }: FilePreviewProps) => {
+export const FilePreview = ({ file, onDelete, isAdmin, isLoading = false }: FilePreviewProps) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
@@ -72,6 +73,17 @@ export const FilePreview = ({ file, onDelete, isAdmin }: FilePreviewProps) => {
       setIsSharing(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="h-full flex items-center justify-center p-4" role="status" aria-live="polite">
+        <div className="text-center text-muted-foreground">
+          <Loader2 className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 animate-spin text-primary" />
+          <p className="text-sm sm:text-base">Loading preview…</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!file) {
     return (

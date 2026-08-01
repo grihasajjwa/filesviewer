@@ -76,6 +76,7 @@ const mockFiles: FileItem[] = [
 
 export const FileManager = () => {
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
+  const [isPreviewSwitching, setIsPreviewSwitching] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [files, setFiles] = useState<FileItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -87,6 +88,7 @@ export const FileManager = () => {
   const fetchInProgressRef = useRef(false);
   // Ref to ensure we show the network/CORS error only once
   const networkErrorShownRef = useRef(false);
+  const previewSwitchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const filteredFiles = useMemo(() => {
     return files.filter(file =>
@@ -95,15 +97,32 @@ export const FileManager = () => {
   }, [files, searchQuery]);
 
   const handleFileSelect = (file: FileItem | null) => {
+    if (previewSwitchTimerRef.current) {
+      clearTimeout(previewSwitchTimerRef.current);
+      previewSwitchTimerRef.current = null;
+    }
+
     if (!file) {
       setSelectedFile(null);
+      setIsPreviewSwitching(false);
       setHasInitializedSelection(false);
       return;
     }
 
     const matchedFile = files.find((item) => item.id === file.id) ?? file;
-    setSelectedFile(matchedFile);
-    setHasInitializedSelection(true);
+    if (selectedFile?.id === matchedFile.id) return;
+
+    // Unmount the current embedded viewer before loading the next one. Loading a
+    // second Office/PDF/Drive iframe while the first is being destroyed can lock
+    // Chromium's renderer, especially on mobile and lower-memory devices.
+    setIsPreviewSwitching(true);
+    setSelectedFile(null);
+    previewSwitchTimerRef.current = setTimeout(() => {
+      setSelectedFile(matchedFile);
+      setHasInitializedSelection(true);
+      setIsPreviewSwitching(false);
+      previewSwitchTimerRef.current = null;
+    }, 75);
   };
 
   const fetchFiles = async (userId: string) => {
@@ -181,32 +200,47 @@ export const FileManager = () => {
         };
       });
 
-      // For local folders, fetch their files
+      // Fetch all local-folder contents in one request instead of blocking page
+      // startup with one network round trip per folder.
       const folders = formattedFiles.filter(file => file.type === "folder" && file.folder_name && !file.drive_folder_link);
-      for (const folder of folders) {
-        try {
-          const { data: folderFiles } = await supabase
+      const folderNames = folders
+        .map((folder) => folder.folder_name)
+        .filter((folderName): folderName is string => Boolean(folderName));
+
+      if (folderNames.length > 0) {
+        const { data: folderFiles, error: folderFilesError } = await supabase
             .from('files')
             .select('*')
             .eq('user_id', userId)
-            .eq('folder_name', folder.folder_name)
+            .in('folder_name', folderNames)
             .neq('type', 'folder')
             .order('created_at', { ascending: false });
 
-          if (folderFiles) {
-            folder.folderFiles = folderFiles.map(file => ({
-              id: file.id,
-              name: file.name,
-              type: file.type,
-              size: file.size,
-              uploadedAt: new Date(file.created_at).toISOString().split('T')[0],
-              url: file.url,
-              thumbnail: file.thumbnail,
-              folder_name: file.folder_name,
-            }));
-          }
-        } catch (error) {
-          console.error('Error fetching folder files:', error);
+        if (folderFilesError) {
+          console.error('Error fetching folder files:', folderFilesError);
+        } else if (folderFiles) {
+          const filesByFolder = new Map<string, FileItem[]>();
+          folderFiles.forEach((folderFile) => {
+            if (!folderFile.folder_name) return;
+            const existingFiles = filesByFolder.get(folderFile.folder_name) ?? [];
+            existingFiles.push({
+              id: folderFile.id,
+              name: folderFile.name,
+              type: folderFile.type,
+              size: folderFile.size,
+              uploadedAt: new Date(folderFile.created_at).toISOString().split('T')[0],
+              url: folderFile.url,
+              thumbnail: folderFile.thumbnail,
+              folder_name: folderFile.folder_name,
+            });
+            filesByFolder.set(folderFile.folder_name, existingFiles);
+          });
+
+          folders.forEach((folder) => {
+            folder.folderFiles = folder.folder_name
+              ? filesByFolder.get(folder.folder_name) ?? []
+              : [];
+          });
         }
       }
 
@@ -406,6 +440,14 @@ export const FileManager = () => {
     return () => subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (previewSwitchTimerRef.current) {
+        clearTimeout(previewSwitchTimerRef.current);
+      }
+    };
+  }, []);
+
   // Show auth screen if not logged in
   if (!user) {
     return (
@@ -478,10 +520,10 @@ export const FileManager = () => {
           {/* File Preview */}
           <div className="flex-1 bg-surface overflow-y-auto p-2 sm:p-4">
             <FilePreview
-              key={selectedFile?.id ?? "no-selection"}
               file={selectedFile}
               onDelete={handleDelete}
               isAdmin={isAdmin}
+              isLoading={isPreviewSwitching}
             />
           </div>
         </main>
