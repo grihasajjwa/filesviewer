@@ -366,6 +366,7 @@ export const FileManager = () => {
     }
   };
 
+  // Keep the selection valid whenever the file list changes
   useEffect(() => {
     if (files.length === 0) {
       setSelectedFile(null);
@@ -373,17 +374,16 @@ export const FileManager = () => {
       return;
     }
 
-    if (!hasInitializedSelection && !selectedFile) {
-      setSelectedFile(files[0]);
-      setHasInitializedSelection(true);
-      return;
-    }
+    setSelectedFile((current) => {
+      if (current && files.some((file) => file.id === current.id)) {
+        // refresh reference so metadata stays in sync
+        return files.find((file) => file.id === current.id) ?? current;
+      }
+      return files[0];
+    });
+    setHasInitializedSelection(true);
+  }, [files]);
 
-    if (selectedFile && !files.some((file) => file.id === selectedFile.id)) {
-      setSelectedFile(files[0]);
-      setHasInitializedSelection(true);
-    }
-  }, [files, selectedFile, hasInitializedSelection]);
 
   // Initial auth check
   useEffect(() => {
