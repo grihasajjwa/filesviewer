@@ -157,7 +157,7 @@ export const FileList = ({
               <div key={file.id} className="relative group">
                 <Button
                   variant="ghost"
-                  onClick={() => onFileSelect(file)}
+                  onClick={() => handleSelect(file)}
                   className={`w-full p-3 h-auto justify-start rounded-lg transition-all duration-200 ${
                     selectedFile?.id === file.id
                       ? "bg-accent text-accent-foreground shadow-sm"
