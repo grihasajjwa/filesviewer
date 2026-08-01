@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { FileItem } from "./FileManager";
 import { formatFileSize } from "@/lib/fileUtils";
 import { StatusBadge } from "./StatusBadge";
+import { useSidebar } from "@/components/ui/sidebar";
 import { useState, useRef } from "react";
 import {
   DropdownMenu,
