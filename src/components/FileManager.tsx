@@ -76,6 +76,7 @@ const mockFiles: FileItem[] = [
 
 export const FileManager = () => {
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
+  const [isPreviewSwitching, setIsPreviewSwitching] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [files, setFiles] = useState<FileItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -87,6 +88,7 @@ export const FileManager = () => {
   const fetchInProgressRef = useRef(false);
   // Ref to ensure we show the network/CORS error only once
   const networkErrorShownRef = useRef(false);
+  const previewSwitchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const filteredFiles = useMemo(() => {
     return files.filter(file =>
@@ -95,15 +97,32 @@ export const FileManager = () => {
   }, [files, searchQuery]);
 
   const handleFileSelect = (file: FileItem | null) => {
+    if (previewSwitchTimerRef.current) {
+      clearTimeout(previewSwitchTimerRef.current);
+      previewSwitchTimerRef.current = null;
+    }
+
     if (!file) {
       setSelectedFile(null);
+      setIsPreviewSwitching(false);
       setHasInitializedSelection(false);
       return;
     }
 
     const matchedFile = files.find((item) => item.id === file.id) ?? file;
-    setSelectedFile(matchedFile);
-    setHasInitializedSelection(true);
+    if (selectedFile?.id === matchedFile.id) return;
+
+    // Unmount the current embedded viewer before loading the next one. Loading a
+    // second Office/PDF/Drive iframe while the first is being destroyed can lock
+    // Chromium's renderer, especially on mobile and lower-memory devices.
+    setIsPreviewSwitching(true);
+    setSelectedFile(null);
+    previewSwitchTimerRef.current = setTimeout(() => {
+      setSelectedFile(matchedFile);
+      setHasInitializedSelection(true);
+      setIsPreviewSwitching(false);
+      previewSwitchTimerRef.current = null;
+    }, 75);
   };
 
   const fetchFiles = async (userId: string) => {
@@ -406,6 +425,14 @@ export const FileManager = () => {
     return () => subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (previewSwitchTimerRef.current) {
+        clearTimeout(previewSwitchTimerRef.current);
+      }
+    };
+  }, []);
+
   // Show auth screen if not logged in
   if (!user) {
     return (
@@ -478,10 +505,10 @@ export const FileManager = () => {
           {/* File Preview */}
           <div className="flex-1 bg-surface overflow-y-auto p-2 sm:p-4">
             <FilePreview
-              key={selectedFile?.id ?? "no-selection"}
               file={selectedFile}
               onDelete={handleDelete}
               isAdmin={isAdmin}
+              isLoading={isPreviewSwitching}
             />
           </div>
         </main>
