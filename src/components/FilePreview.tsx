@@ -2,6 +2,7 @@ import { FileItem } from "./FileManager";
 import { Download, FileText, Eye, ExternalLink, FolderOpen, Presentation, Maximize, Share2, Loader2, Music, Play, Youtube, Facebook } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatFileSize, isPowerPointFile, isWordFile, isExcelFile, isAudioFile, isYouTubeUrl, extractYouTubeVideoId } from "@/lib/fileUtils";
 import { saveAs } from "file-saver";
 import { FolderCarousel } from "./FolderCarousel";
@@ -76,10 +77,27 @@ export const FilePreview = ({ file, onDelete, isAdmin, isLoading = false }: File
 
   if (isLoading) {
     return (
-      <div className="h-full flex items-center justify-center p-4" role="status" aria-live="polite">
-        <div className="text-center text-muted-foreground">
-          <Loader2 className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 animate-spin text-primary" />
-          <p className="text-sm sm:text-base">Loading preview…</p>
+      <div className="h-full p-4">
+        <div className="h-full flex flex-col gap-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-3 flex-1">
+              <Skeleton className="h-6 w-2/5" />
+              <Skeleton className="h-4 w-1/3" />
+            </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+              Loading preview...
+            </div>
+          </div>
+          <div className="flex-1 rounded-3xl border border-border bg-muted/70 p-6">
+            <div className="grid grid-cols-1 gap-4">
+              <Skeleton className="h-52 w-full rounded-2xl" />
+              <div className="grid grid-cols-2 gap-4">
+                <Skeleton className="h-20 rounded-2xl" />
+                <Skeleton className="h-20 rounded-2xl" />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );

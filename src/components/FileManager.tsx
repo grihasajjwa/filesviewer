@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { FileList } from "./FileList";
 import { FilePreview } from "./FilePreview";
+import { ErrorBoundary } from "./ErrorBoundary";
 import { AdminPanel } from "./AdminPanel";
 import { Auth } from "./Auth";
 import { Button } from "@/components/ui/button";
@@ -77,6 +78,7 @@ const mockFiles: FileItem[] = [
 export const FileManager = () => {
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
   const [isPreviewSwitching, setIsPreviewSwitching] = useState(false);
+  const [previewSwitchKey, setPreviewSwitchKey] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
   const [files, setFiles] = useState<FileItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -89,6 +91,8 @@ export const FileManager = () => {
   // Ref to ensure we show the network/CORS error only once
   const networkErrorShownRef = useRef(false);
   const previewSwitchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previewSwitchIdRef = useRef(0);
+  const pendingPreviewIdRef = useRef<string | null>(null);
 
   const filteredFiles = useMemo(() => {
     return files.filter(file =>
@@ -102,7 +106,12 @@ export const FileManager = () => {
       previewSwitchTimerRef.current = null;
     }
 
+    previewSwitchIdRef.current += 1;
+    const currentPreviewSwitchId = previewSwitchIdRef.current;
+
     if (!file) {
+      pendingPreviewIdRef.current = null;
+      setPreviewSwitchKey((prev) => prev + 1);
       setSelectedFile(null);
       setIsPreviewSwitching(false);
       setHasInitializedSelection(false);
@@ -110,19 +119,26 @@ export const FileManager = () => {
     }
 
     const matchedFile = files.find((item) => item.id === file.id) ?? file;
-    if (selectedFile?.id === matchedFile.id) return;
+    const isSameCurrentFile = selectedFile?.id === matchedFile.id && !isPreviewSwitching;
+    const isSamePendingFile = pendingPreviewIdRef.current === matchedFile.id && isPreviewSwitching;
+    if (isSameCurrentFile || isSamePendingFile) return;
 
-    // Unmount the current embedded viewer before loading the next one. Loading a
-    // second Office/PDF/Drive iframe while the first is being destroyed can lock
-    // Chromium's renderer, especially on mobile and lower-memory devices.
+    pendingPreviewIdRef.current = matchedFile.id;
+    setPreviewSwitchKey((prev) => prev + 1);
     setIsPreviewSwitching(true);
     setSelectedFile(null);
+    setHasInitializedSelection(false);
+
     previewSwitchTimerRef.current = setTimeout(() => {
+      previewSwitchTimerRef.current = null;
+      if (previewSwitchIdRef.current !== currentPreviewSwitchId) {
+        return;
+      }
+      pendingPreviewIdRef.current = null;
       setSelectedFile(matchedFile);
       setHasInitializedSelection(true);
       setIsPreviewSwitching(false);
-      previewSwitchTimerRef.current = null;
-    }, 75);
+    }, 120);
   };
 
   const fetchFiles = async (userId: string) => {
@@ -445,6 +461,7 @@ export const FileManager = () => {
       if (previewSwitchTimerRef.current) {
         clearTimeout(previewSwitchTimerRef.current);
       }
+      previewSwitchIdRef.current += 1;
     };
   }, []);
 
@@ -478,6 +495,7 @@ export const FileManager = () => {
                 searchQuery={searchQuery}
                 onSearchChange={setSearchQuery}
                 isAdmin={isAdmin}
+                isLoading={isPreviewSwitching}
                 onRenameFile={handleRenameFile}
               />
             </div>
@@ -519,12 +537,21 @@ export const FileManager = () => {
 
           {/* File Preview */}
           <div className="flex-1 bg-surface overflow-y-auto p-2 sm:p-4">
-            <FilePreview
-              file={selectedFile}
-              onDelete={handleDelete}
-              isAdmin={isAdmin}
-              isLoading={isPreviewSwitching}
-            />
+            <ErrorBoundary
+              resetKey={previewSwitchKey}
+              onReset={() => {
+                // Force remount and clear any error when retrying.
+                setPreviewSwitchKey((prev) => prev + 1);
+              }}
+            >
+              <FilePreview
+                key={previewSwitchKey}
+                file={selectedFile}
+                onDelete={handleDelete}
+                isAdmin={isAdmin}
+                isLoading={isPreviewSwitching}
+              />
+            </ErrorBoundary>
           </div>
         </main>
       </div>
