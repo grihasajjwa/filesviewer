@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { FileItem } from "./FileManager";
 import { formatFileSize } from "@/lib/fileUtils";
 import { StatusBadge } from "./StatusBadge";
+import { useSidebar } from "@/components/ui/sidebar";
 import { useState, useRef } from "react";
 import {
   DropdownMenu,
@@ -71,11 +72,18 @@ export const FileList = ({
   isAdmin = false,
   onRenameFile,
 }: FileListProps) => {
+  const { isMobile, setOpenMobile } = useSidebar();
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [renamingFile, setRenamingFile] = useState<FileItem | null>(null);
   const [newFileName, setNewFileName] = useState("");
+
+  const handleSelect = (file: FileItem) => {
+    onFileSelect(file);
+    if (isMobile) setOpenMobile(false);
+  };
+
 
   const handleRenameClick = (e: React.MouseEvent, file: FileItem) => {
     e.stopPropagation();
@@ -149,7 +157,7 @@ export const FileList = ({
               <div key={file.id} className="relative group">
                 <Button
                   variant="ghost"
-                  onClick={() => onFileSelect(file)}
+                  onClick={() => handleSelect(file)}
                   className={`w-full p-3 h-auto justify-start rounded-lg transition-all duration-200 ${
                     selectedFile?.id === file.id
                       ? "bg-accent text-accent-foreground shadow-sm"

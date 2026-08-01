@@ -14,6 +14,53 @@ interface FilePreviewProps {
   isAdmin: boolean;
 }
 
+// Reusable responsive header component (module scope to avoid remounting previews)
+const PreviewToolbar = ({
+  icon: Icon,
+  iconClass,
+  title,
+  children,
+}: {
+  icon: React.ElementType;
+  iconClass: string;
+  title: string;
+  children?: React.ReactNode;
+}) => (
+  <div className="flex flex-col xs:flex-row xs:items-center justify-between p-2 sm:p-4 border-b border-border bg-muted/30 gap-2 xs:gap-0">
+    <div className="flex items-center space-x-2">
+      <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${iconClass}`} />
+      <span className="font-medium text-xs sm:text-sm">{title}</span>
+    </div>
+    <div className="flex flex-wrap gap-1.5 sm:gap-2">{children}</div>
+  </div>
+);
+
+// Reusable responsive button (module scope)
+const ActionButton = ({
+  icon: Icon,
+  label,
+  onClick,
+  variant = "secondary",
+  className = "",
+}: {
+  icon: React.ElementType;
+  label: string;
+  onClick: () => void;
+  variant?: "default" | "secondary" | "destructive";
+  className?: string;
+}) => (
+  <Button
+    variant={variant}
+    size="sm"
+    onClick={onClick}
+    className={`text-xs h-7 px-2 sm:h-8 sm:px-3 sm:text-sm ${className}`}
+  >
+    <Icon className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+    <span className="hidden xs:inline">{label}</span>
+  </Button>
+);
+
+
 export const FilePreview = ({ file, onDelete, isAdmin }: FilePreviewProps) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -96,53 +143,7 @@ export const FilePreview = ({ file, onDelete, isAdmin }: FilePreviewProps) => {
   };
 
   const renderPreview = () => {
-    // Reusable responsive header component
-    const PreviewToolbar = ({ 
-      icon: Icon, 
-      iconClass, 
-      title, 
-      children 
-    }: { 
-      icon: React.ElementType; 
-      iconClass: string; 
-      title: string; 
-      children?: React.ReactNode 
-    }) => (
-      <div className="flex flex-col xs:flex-row xs:items-center justify-between p-2 sm:p-4 border-b border-border bg-muted/30 gap-2 xs:gap-0">
-        <div className="flex items-center space-x-2">
-          <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${iconClass}`} />
-          <span className="font-medium text-xs sm:text-sm">{title}</span>
-        </div>
-        <div className="flex flex-wrap gap-1.5 sm:gap-2">
-          {children}
-        </div>
-      </div>
-    );
 
-    // Reusable responsive button
-    const ActionButton = ({ 
-      icon: Icon, 
-      label, 
-      onClick, 
-      variant = "secondary",
-      className = ""
-    }: { 
-      icon: React.ElementType; 
-      label: string; 
-      onClick: () => void; 
-      variant?: "default" | "secondary" | "destructive";
-      className?: string;
-    }) => (
-      <Button 
-        variant={variant} 
-        size="sm"
-        onClick={onClick}
-        className={`text-xs h-7 px-2 sm:h-8 sm:px-3 sm:text-sm ${className}`}
-      >
-        <Icon className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-        <span className="hidden xs:inline">{label}</span>
-      </Button>
-    );
 
     if (file.type === "folder" && file.folderFiles) {
       return (

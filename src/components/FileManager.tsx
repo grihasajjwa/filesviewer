@@ -79,6 +79,7 @@ export const FileManager = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [files, setFiles] = useState<FileItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [hasInitializedSelection, setHasInitializedSelection] = useState(false);
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -92,6 +93,18 @@ export const FileManager = () => {
       file.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [files, searchQuery]);
+
+  const handleFileSelect = (file: FileItem | null) => {
+    if (!file) {
+      setSelectedFile(null);
+      setHasInitializedSelection(false);
+      return;
+    }
+
+    const matchedFile = files.find((item) => item.id === file.id) ?? file;
+    setSelectedFile(matchedFile);
+    setHasInitializedSelection(true);
+  };
 
   const fetchFiles = async (userId: string) => {
     if (fetchInProgressRef.current) return;
@@ -265,12 +278,15 @@ export const FileManager = () => {
   const handleFileUpload = (newFiles: FileItem[]) => {
     setFiles((prev) => {
       const updatedFiles = [...newFiles, ...prev];
-      // Prevent redundant updates by comparing the new and previous files
       if (JSON.stringify(updatedFiles) !== JSON.stringify(prev)) {
         return updatedFiles;
       }
       return prev;
     });
+
+    if (newFiles.length > 0) {
+      setSelectedFile(newFiles[0]);
+    }
   };
 
   const handleAuthChange = (newUser: SupabaseUser | null, newSession: Session | null) => {
@@ -350,6 +366,25 @@ export const FileManager = () => {
     }
   };
 
+  // Keep the selection valid whenever the file list changes
+  useEffect(() => {
+    if (files.length === 0) {
+      setSelectedFile(null);
+      setHasInitializedSelection(false);
+      return;
+    }
+
+    setSelectedFile((current) => {
+      if (current && files.some((file) => file.id === current.id)) {
+        // refresh reference so metadata stays in sync
+        return files.find((file) => file.id === current.id) ?? current;
+      }
+      return files[0];
+    });
+    setHasInitializedSelection(true);
+  }, [files]);
+
+
   // Initial auth check
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -397,7 +432,7 @@ export const FileManager = () => {
               <FileList
                 files={filteredFiles}
                 selectedFile={selectedFile}
-                onFileSelect={setSelectedFile}
+                onFileSelect={handleFileSelect}
                 searchQuery={searchQuery}
                 onSearchChange={setSearchQuery}
                 isAdmin={isAdmin}
@@ -442,9 +477,10 @@ export const FileManager = () => {
 
           {/* File Preview */}
           <div className="flex-1 bg-surface overflow-y-auto p-2 sm:p-4">
-            <FilePreview 
-              file={selectedFile} 
-              onDelete={handleDelete} 
+            <FilePreview
+              key={selectedFile?.id ?? "no-selection"}
+              file={selectedFile}
+              onDelete={handleDelete}
               isAdmin={isAdmin}
             />
           </div>

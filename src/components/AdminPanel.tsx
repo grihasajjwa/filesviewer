@@ -33,6 +33,20 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
   const [facebookForm, setFacebookForm] = useState({ title: "", description: "" });
   
   const { toast } = useToast();
+  const MAX_UPLOAD_SIZE_BYTES = 50 * 1024 * 1024;
+
+  const validateUploadSize = (files: FileList | File[]) => {
+    const selectedFiles = Array.from(files);
+    const oversizedFiles = selectedFiles.filter((file) => file.size > MAX_UPLOAD_SIZE_BYTES);
+
+    if (oversizedFiles.length > 0) {
+      throw new Error(
+        `Each file must be 50MB or smaller. Exceeds the limit: ${oversizedFiles.map((file) => file.name).join(", ")}`
+      );
+    }
+
+    return selectedFiles;
+  };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -41,6 +55,8 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
     setIsUploading(true);
     
     try {
+      const selectedFiles = validateUploadSize(files);
+
       // Get current user
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
@@ -52,7 +68,7 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
         return;
       }
 
-      const uploadPromises = Array.from(files).map(async (file) => {
+      const uploadPromises = selectedFiles.map(async (file) => {
         const fileExt = file.name.split('.').pop();
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
         
@@ -105,9 +121,10 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
       });
     } catch (error) {
       console.error('Upload error:', error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to upload files. Please try again.";
       toast({
         title: "Upload Failed",
-        description: "Failed to upload files. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -122,6 +139,8 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
     setIsFolderUploading(true);
     
     try {
+      const selectedFiles = validateUploadSize(files);
+
       // Get current user
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
@@ -134,7 +153,7 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
       }
 
       // Get folder name from the first file's path
-      const firstFile = files[0];
+      const firstFile = selectedFiles[0];
       const folderPath = firstFile.webkitRelativePath;
       const folderName = folderPath.split('/')[0];
 
@@ -157,7 +176,7 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
       if (folderError) throw folderError;
 
       // Upload all files in the folder
-      const uploadPromises = Array.from(files).map(async (file) => {
+      const uploadPromises = selectedFiles.map(async (file) => {
         const fileExt = file.name.split('.').pop();
         const fileName = `folders/${folderName}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
         
@@ -221,13 +240,14 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
       
       toast({
         title: "Folder Upload Successful",
-        description: `Folder "${folderName}" with ${files.length} file(s) uploaded successfully`,
+        description: `Folder "${folderName}" with ${selectedFiles.length} file(s) uploaded successfully`,
       });
     } catch (error) {
       console.error('Folder upload error:', error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to upload folder. Please try again.";
       toast({
         title: "Upload Failed",
-        description: "Failed to upload folder. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -752,6 +772,7 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
                 className="hidden"
                 disabled={isUploading}
               />
+              <p className="text-xs text-muted-foreground">Maximum size: 50MB per file</p>
             </div>
           </TabsContent>
 
@@ -802,6 +823,7 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
                 <FolderOpen className="w-3 h-3 mr-1" />
                 Select an entire folder with all its files
               </p>
+              <p className="text-xs text-muted-foreground">Maximum size: 50MB per file</p>
             </div>
           </TabsContent>
 
