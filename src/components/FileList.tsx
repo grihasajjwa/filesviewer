@@ -71,11 +71,18 @@ export const FileList = ({
   isAdmin = false,
   onRenameFile,
 }: FileListProps) => {
+  const { isMobile, setOpenMobile } = useSidebar();
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [renamingFile, setRenamingFile] = useState<FileItem | null>(null);
   const [newFileName, setNewFileName] = useState("");
+
+  const handleSelect = (file: FileItem) => {
+    onFileSelect(file);
+    if (isMobile) setOpenMobile(false);
+  };
+
 
   const handleRenameClick = (e: React.MouseEvent, file: FileItem) => {
     e.stopPropagation();
