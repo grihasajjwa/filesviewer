@@ -148,7 +148,10 @@ export const FileList = ({
   };
 
   return (
-    <div className="flex flex-col h-full" aria-busy={isLoading} aria-disabled={isLoading}>
+    <div className="relative flex flex-col h-full" aria-busy={isLoading} aria-disabled={isLoading}>
+      {isLoading && (
+        <div className="pointer-events-none absolute inset-0 z-20 bg-muted/70" />
+      )}
       {/* Search Bar */}
       <div className="p-4 border-b border-border">
         <div className="relative">
