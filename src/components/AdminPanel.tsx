@@ -11,10 +11,11 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 interface AdminPanelProps {
+  targetUserId?: string;
   onFileUpload: (files: FileItem[]) => void;
 }
 
-export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
+export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
   const [driveFileLink, setDriveFileLink] = useState("");
   const [driveFolderLink, setDriveFolderLink] = useState("");
   const [imageUrl, setImageUrl] = useState("");
@@ -88,7 +89,7 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
         const { data: dbData, error: dbError } = await supabase
           .from('files')
           .insert({
-            user_id: user.id,
+            user_id: targetUserId ?? user.id,
             name: file.name,
             type: getFileType(file.name),
             size: file.size,
@@ -161,7 +162,7 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
       const { data: folderData, error: folderError } = await supabase
         .from('files')
         .insert({
-          user_id: user.id,
+          user_id: targetUserId ?? user.id,
           name: folderUploadForm.title || folderName,
           type: "folder",
           size: 0,
@@ -196,7 +197,7 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
         const { data: dbData, error: dbError } = await supabase
           .from('files')
           .insert({
-            user_id: user.id,
+            user_id: targetUserId ?? user.id,
             name: file.name,
             type: getFileType(file.name),
             size: file.size,
@@ -285,7 +286,7 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
       const { data: dbData, error: dbError } = await supabase
         .from('files')
         .insert({
-          user_id: user.id,
+          user_id: targetUserId ?? user.id,
           name: metadata.name,
           type: metadata.type,
           size: metadata.size,
@@ -349,7 +350,7 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
       const { data: dbData, error: dbError } = await supabase
         .from('files')
         .insert({
-          user_id: user.id,
+          user_id: targetUserId ?? user.id,
           name: driveFolderForm.title || "Google Drive Folder",
           type: "folder",
           size: 0, // Folder size is 0
@@ -410,7 +411,7 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
       const { data: dbData, error: dbError } = await supabase
         .from('internet_images')
         .insert({
-          user_id: user.id,
+          user_id: targetUserId ?? user.id,
           title: imageLinksForm.title || "Internet Image",
           url: imageUrl,
           description: imageLinksForm.description,
@@ -424,7 +425,7 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
       const { data: fileData, error: fileError } = await supabase
         .from('files')
         .insert({
-          user_id: user.id,
+          user_id: targetUserId ?? user.id,
           name: imageLinksForm.title || "Internet Image",
           type: "image",
           size: 0, // Unknown size for external images
@@ -494,7 +495,7 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
       const { data: fileData, error: fileError } = await supabase
         .from('files')
         .insert({
-          user_id: user.id,
+          user_id: targetUserId ?? user.id,
           name: youtubeForm.title || "YouTube Video",
           type: "video",
           size: 0,
@@ -587,7 +588,7 @@ export const AdminPanel = ({ onFileUpload }: AdminPanelProps) => {
       const { data: fileData, error: fileError } = await supabase
         .from('files')
         .insert({
-          user_id: user.id,
+          user_id: targetUserId ?? user.id,
           name: facebookForm.title || "Facebook Post",
           type: "facebook",
           size: 0,
