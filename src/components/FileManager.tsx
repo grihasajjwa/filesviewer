@@ -1,13 +1,15 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { FileList } from "./FileList";
 import { FilePreview } from "./FilePreview";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { AdminPanel } from "./AdminPanel";
 import { Auth } from "./Auth";
 import { Button } from "@/components/ui/button";
-import { User, Shield, Menu } from "lucide-react";
+import { User, Shield, Menu, LayoutDashboard } from "lucide-react";
 import { User as SupabaseUser, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { useUserRole } from "@/hooks/useUserRole";
 import { toast } from "sonner";
 import DevDebugPanel from "./DevDebugPanel";
 import {
