@@ -324,7 +324,7 @@ export const FileManager = () => {
     
     // Reset admin status when user changes
     if (!newUser) {
-      setIsAdmin(false);
+      setAdminMode(false);
       setFiles([]);
       setSelectedFile(null);
     } else {
