@@ -70,6 +70,7 @@ const Admin = () => {
   const [search, setSearch] = useState("");
   const [openUserId, setOpenUserId] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
+  const [showDelete, setShowDelete] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
