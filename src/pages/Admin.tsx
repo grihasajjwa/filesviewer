@@ -176,10 +176,21 @@ const Admin = () => {
               User folders, storage usage and uploads
             </p>
           </div>
-          <Button variant="outline" size="sm" onClick={load} disabled={loading}>
-            <RefreshCw className={`w-4 h-4 sm:mr-2 ${loading ? "animate-spin" : ""}`} />
-            <span className="hidden sm:inline">Refresh</span>
-          </Button>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <label className="flex min-h-9 items-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground cursor-pointer">
+              <Checkbox
+                checked={showDelete}
+                onCheckedChange={(checked) => setShowDelete(Boolean(checked))}
+                aria-label="Show delete icons"
+              />
+              <span className="hidden sm:inline">Show delete icons</span>
+              <span className="sm:hidden">Delete</span>
+            </label>
+            <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+              <RefreshCw className={`w-4 h-4 sm:mr-2 ${loading ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline">Refresh</span>
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -288,15 +299,7 @@ const Admin = () => {
                 </h2>
                 <p className="text-xs text-muted-foreground truncate">{openProfile.email}</p>
               </div>
-              <label className="flex items-center gap-2 ml-auto text-sm text-muted-foreground cursor-pointer">
-                <Checkbox
-                  checked={showDelete}
-                  onCheckedChange={(checked) => setShowDelete(Boolean(checked))}
-                  aria-label="Show delete icons"
-                />
-                Show delete
-              </label>
-              <Badge variant="outline">
+              <Badge variant="outline" className="ml-auto">
                 {megabytes(stats.get(openProfile.id)?.bytes ?? 0)} used
               </Badge>
             </div>
