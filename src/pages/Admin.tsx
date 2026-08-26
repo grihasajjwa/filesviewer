@@ -353,7 +353,7 @@ const Admin = () => {
                   <FilePreview
                     key={selectedFile?.id ?? "none"}
                     file={selectedFile}
-                    onDelete={handleDelete}
+                    onDelete={showDelete ? handleDelete : undefined}
                     isAdmin
                     isLoading={false}
                   />
