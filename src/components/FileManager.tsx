@@ -1,13 +1,15 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { FileList } from "./FileList";
 import { FilePreview } from "./FilePreview";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { AdminPanel } from "./AdminPanel";
 import { Auth } from "./Auth";
 import { Button } from "@/components/ui/button";
-import { User, Shield, Menu } from "lucide-react";
+import { User, Shield, Menu, LayoutDashboard } from "lucide-react";
 import { User as SupabaseUser, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { useUserRole } from "@/hooks/useUserRole";
 import { toast } from "sonner";
 import DevDebugPanel from "./DevDebugPanel";
 import {
@@ -79,7 +81,9 @@ export const FileManager = () => {
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
   const [isPreviewSwitching, setIsPreviewSwitching] = useState(false);
   const [previewSwitchKey, setPreviewSwitchKey] = useState(0);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { isAdmin: canUseAdmin } = useUserRole();
+  const [adminMode, setAdminMode] = useState(false);
+  const isAdmin = canUseAdmin && adminMode;
   const [files, setFiles] = useState<FileItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [hasInitializedSelection, setHasInitializedSelection] = useState(false);
@@ -320,7 +324,7 @@ export const FileManager = () => {
     
     // Reset admin status when user changes
     if (!newUser) {
-      setIsAdmin(false);
+      setAdminMode(false);
       setFiles([]);
       setSelectedFile(null);
     } else {
@@ -493,17 +497,32 @@ export const FileManager = () => {
               
               <div className="flex items-center space-x-2 sm:space-x-4 justify-end">
                 <Auth user={user} onAuthChange={handleAuthChange} />
-                <div className="h-6 w-px bg-border hidden sm:block" />
-                <Button
-                  variant={isAdmin ? "default" : "secondary"}
-                  size="sm"
-                  onClick={() => setIsAdmin(!isAdmin)}
-                  className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm px-2 sm:px-3"
-                >
-                  {isAdmin ? <Shield className="w-3 h-3 sm:w-4 sm:h-4" /> : <User className="w-3 h-3 sm:w-4 sm:h-4" />}
-                  <span className="hidden xs:inline">{isAdmin ? "Admin" : "View"}</span>
-                  <span className="xs:hidden">{isAdmin ? "A" : "V"}</span>
-                </Button>
+                {canUseAdmin && (
+                  <>
+                    <div className="h-6 w-px bg-border hidden sm:block" />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      asChild
+                      className="text-xs sm:text-sm px-2 sm:px-3"
+                    >
+                      <Link to="/admin" className="flex items-center space-x-1 sm:space-x-2">
+                        <LayoutDashboard className="w-3 h-3 sm:w-4 sm:h-4" />
+                        <span className="hidden sm:inline">Dashboard</span>
+                      </Link>
+                    </Button>
+                    <Button
+                      variant={isAdmin ? "default" : "secondary"}
+                      size="sm"
+                      onClick={() => setAdminMode((prev) => !prev)}
+                      className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm px-2 sm:px-3"
+                    >
+                      {isAdmin ? <Shield className="w-3 h-3 sm:w-4 sm:h-4" /> : <User className="w-3 h-3 sm:w-4 sm:h-4" />}
+                      <span className="hidden xs:inline">{isAdmin ? "Admin" : "View"}</span>
+                      <span className="xs:hidden">{isAdmin ? "A" : "V"}</span>
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           </header>
