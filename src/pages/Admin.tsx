@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AdminPanel } from "@/components/AdminPanel";
 import { FilePreview } from "@/components/FilePreview";
@@ -69,6 +70,7 @@ const Admin = () => {
   const [search, setSearch] = useState("");
   const [openUserId, setOpenUserId] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
+  const [showDelete, setShowDelete] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -286,7 +288,15 @@ const Admin = () => {
                 </h2>
                 <p className="text-xs text-muted-foreground truncate">{openProfile.email}</p>
               </div>
-              <Badge variant="outline" className="ml-auto">
+              <label className="flex items-center gap-2 ml-auto text-sm text-muted-foreground cursor-pointer">
+                <Checkbox
+                  checked={showDelete}
+                  onCheckedChange={(checked) => setShowDelete(Boolean(checked))}
+                  aria-label="Show delete icons"
+                />
+                Show delete
+              </label>
+              <Badge variant="outline">
                 {megabytes(stats.get(openProfile.id)?.bytes ?? 0)} used
               </Badge>
             </div>
@@ -323,14 +333,16 @@ const Admin = () => {
                           {new Date(row.created_at).toLocaleDateString()}
                         </p>
                       </button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={`Delete ${row.name}`}
-                        onClick={() => handleDelete(row.id)}
-                      >
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
+                      {showDelete && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Delete ${row.name}`}
+                          onClick={() => handleDelete(row.id)}
+                        >
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      )}
                     </div>
                   ))}
                 </Card>
@@ -341,7 +353,7 @@ const Admin = () => {
                   <FilePreview
                     key={selectedFile?.id ?? "none"}
                     file={selectedFile}
-                    onDelete={handleDelete}
+                    onDelete={showDelete ? handleDelete : undefined}
                     isAdmin
                     isLoading={false}
                   />
