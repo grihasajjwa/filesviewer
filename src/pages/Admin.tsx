@@ -288,7 +288,15 @@ const Admin = () => {
                 </h2>
                 <p className="text-xs text-muted-foreground truncate">{openProfile.email}</p>
               </div>
-              <Badge variant="outline" className="ml-auto">
+              <label className="flex items-center gap-2 ml-auto text-sm text-muted-foreground cursor-pointer">
+                <Checkbox
+                  checked={showDelete}
+                  onCheckedChange={(checked) => setShowDelete(Boolean(checked))}
+                  aria-label="Show delete icons"
+                />
+                Show delete
+              </label>
+              <Badge variant="outline">
                 {megabytes(stats.get(openProfile.id)?.bytes ?? 0)} used
               </Badge>
             </div>
