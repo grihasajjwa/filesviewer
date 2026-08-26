@@ -81,7 +81,9 @@ export const FileManager = () => {
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
   const [isPreviewSwitching, setIsPreviewSwitching] = useState(false);
   const [previewSwitchKey, setPreviewSwitchKey] = useState(0);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { isAdmin: canUseAdmin } = useUserRole();
+  const [adminMode, setAdminMode] = useState(false);
+  const isAdmin = canUseAdmin && adminMode;
   const [files, setFiles] = useState<FileItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [hasInitializedSelection, setHasInitializedSelection] = useState(false);
