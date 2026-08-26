@@ -333,14 +333,16 @@ const Admin = () => {
                           {new Date(row.created_at).toLocaleDateString()}
                         </p>
                       </button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={`Delete ${row.name}`}
-                        onClick={() => handleDelete(row.id)}
-                      >
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
+                      {showDelete && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Delete ${row.name}`}
+                          onClick={() => handleDelete(row.id)}
+                        >
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      )}
                     </div>
                   ))}
                 </Card>
