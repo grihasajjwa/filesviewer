@@ -82,8 +82,10 @@ export const FileManager = () => {
   const [isPreviewSwitching, setIsPreviewSwitching] = useState(false);
   const [previewSwitchKey, setPreviewSwitchKey] = useState(0);
   const { isAdmin: canUseAdmin } = useUserRole();
+  // Upload mode is available to every signed-in user so they can upload
+  // files to their own folder; only real admins get the Dashboard.
   const [adminMode, setAdminMode] = useState(false);
-  const isAdmin = canUseAdmin && adminMode;
+  const isAdmin = adminMode;
   const [files, setFiles] = useState<FileItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [hasInitializedSelection, setHasInitializedSelection] = useState(false);
@@ -497,32 +499,30 @@ export const FileManager = () => {
               
               <div className="flex items-center space-x-2 sm:space-x-4 justify-end">
                 <Auth user={user} onAuthChange={handleAuthChange} />
+                <div className="h-6 w-px bg-border hidden sm:block" />
                 {canUseAdmin && (
-                  <>
-                    <div className="h-6 w-px bg-border hidden sm:block" />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      asChild
-                      className="text-xs sm:text-sm px-2 sm:px-3"
-                    >
-                      <Link to="/admin" className="flex items-center space-x-1 sm:space-x-2">
-                        <LayoutDashboard className="w-3 h-3 sm:w-4 sm:h-4" />
-                        <span className="hidden sm:inline">Dashboard</span>
-                      </Link>
-                    </Button>
-                    <Button
-                      variant={isAdmin ? "default" : "secondary"}
-                      size="sm"
-                      onClick={() => setAdminMode((prev) => !prev)}
-                      className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm px-2 sm:px-3"
-                    >
-                      {isAdmin ? <Shield className="w-3 h-3 sm:w-4 sm:h-4" /> : <User className="w-3 h-3 sm:w-4 sm:h-4" />}
-                      <span className="hidden xs:inline">{isAdmin ? "Admin" : "View"}</span>
-                      <span className="xs:hidden">{isAdmin ? "A" : "V"}</span>
-                    </Button>
-                  </>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    asChild
+                    className="text-xs sm:text-sm px-2 sm:px-3"
+                  >
+                    <Link to="/admin" className="flex items-center space-x-1 sm:space-x-2">
+                      <LayoutDashboard className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span className="hidden sm:inline">Dashboard</span>
+                    </Link>
+                  </Button>
                 )}
+                <Button
+                  variant={isAdmin ? "default" : "secondary"}
+                  size="sm"
+                  onClick={() => setAdminMode((prev) => !prev)}
+                  className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm px-2 sm:px-3"
+                >
+                  {isAdmin ? <Shield className="w-3 h-3 sm:w-4 sm:h-4" /> : <User className="w-3 h-3 sm:w-4 sm:h-4" />}
+                  <span className="hidden xs:inline">{isAdmin ? "Upload" : "View"}</span>
+                  <span className="xs:hidden">{isAdmin ? "U" : "V"}</span>
+                </Button>
               </div>
             </div>
           </header>
