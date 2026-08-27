@@ -688,6 +688,8 @@ export const FilePreview = ({ file, onDelete, isAdmin, isLoading = false }: File
           {renderPreview()}
         </div>
       </div>
+      {deleteDialog}
     </div>
+
   );
 };
