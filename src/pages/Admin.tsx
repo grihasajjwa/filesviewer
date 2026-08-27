@@ -25,6 +25,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import type { FileItem } from "@/components/FileManager";
 import { formatFileSize } from "@/lib/fileUtils";
 import { toast } from "sonner";
+import { useConfirmDelete } from "@/components/ConfirmDeleteDialog";
 
 interface Profile {
   id: string;
@@ -71,6 +72,7 @@ const Admin = () => {
   const [openUserId, setOpenUserId] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
   const [showDelete, setShowDelete] = useState(true);
+  const { confirmDelete, dialog: deleteDialog } = useConfirmDelete({ allowSkip: true });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -341,7 +343,7 @@ const Admin = () => {
                           variant="ghost"
                           size="icon"
                           aria-label={`Delete ${row.name}`}
-                          onClick={() => handleDelete(row.id)}
+                          onClick={() => confirmDelete(() => handleDelete(row.id), row.name)}
                         >
                           <Trash2 className="w-4 h-4 text-destructive" />
                         </Button>
@@ -366,6 +368,7 @@ const Admin = () => {
           </>
         )}
       </main>
+      {deleteDialog}
     </div>
   );
 };
