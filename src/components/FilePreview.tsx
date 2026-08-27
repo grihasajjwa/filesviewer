@@ -125,9 +125,10 @@ export const FilePreview = ({ file, onDelete, isAdmin, isLoading = false }: File
   };
 
   const handleDelete = (id: string) => {
-    // Call the onDelete prop function passed from the parent component
-    onDelete(id);
+    if (!onDelete) return;
+    confirmDelete(() => onDelete(id), file?.name);
   };
+
 
   const renderPreview = () => {
 
