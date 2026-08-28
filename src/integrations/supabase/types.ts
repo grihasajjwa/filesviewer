@@ -53,8 +53,11 @@ export type Database = {
         Row: {
           bucket_name: string
           created_at: string
+          drive_file_id: string | null
           drive_folder_link: string | null
           drive_link: string | null
+          drive_share_link: string | null
+          drive_shared: boolean
           file_path: string
           folder_name: string | null
           id: string
@@ -69,8 +72,11 @@ export type Database = {
         Insert: {
           bucket_name?: string
           created_at?: string
+          drive_file_id?: string | null
           drive_folder_link?: string | null
           drive_link?: string | null
+          drive_share_link?: string | null
+          drive_shared?: boolean
           file_path: string
           folder_name?: string | null
           id?: string
@@ -85,8 +91,11 @@ export type Database = {
         Update: {
           bucket_name?: string
           created_at?: string
+          drive_file_id?: string | null
           drive_folder_link?: string | null
           drive_link?: string | null
+          drive_share_link?: string | null
+          drive_shared?: boolean
           file_path?: string
           folder_name?: string | null
           id?: string
