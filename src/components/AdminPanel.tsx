@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Upload, Link2, Plus, FolderOpen, FileText, Image, Globe, Youtube, Facebook } from "lucide-react";
+import { Upload, Link2, Plus, FolderOpen, FileText, Image, Globe, Youtube, Facebook, HardDrive } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -718,15 +718,36 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
         <Tabs defaultValue="files" className="w-full">
           <div className="space-y-1 mb-4">
             <TabsList className="grid w-full grid-cols-4 gap-1 h-auto p-1">
-              <TabsTrigger value="files" className="text-xs">Files</TabsTrigger>
-              <TabsTrigger value="folder" className="text-xs">Folder</TabsTrigger>
-              <TabsTrigger value="drive-file" className="text-xs">Drive File</TabsTrigger>
-              <TabsTrigger value="drive-folder" className="text-xs">Drive Folder</TabsTrigger>
+              <TabsTrigger value="files" className="text-xs flex items-center gap-1">
+                <Upload className="w-3.5 h-3.5" />
+                <span>Files</span>
+              </TabsTrigger>
+              <TabsTrigger value="folder" className="text-xs flex items-center gap-1">
+                <FolderOpen className="w-3.5 h-3.5" />
+                <span>Folder</span>
+              </TabsTrigger>
+              <TabsTrigger value="drive-file" className="text-xs flex items-center gap-1">
+                <HardDrive className="w-3.5 h-3.5 text-blue-600" />
+                <span>Drive File</span>
+              </TabsTrigger>
+              <TabsTrigger value="drive-folder" className="text-xs flex items-center gap-1">
+                <HardDrive className="w-3.5 h-3.5 text-blue-600" />
+                <span>Drive Folder</span>
+              </TabsTrigger>
             </TabsList>
             <TabsList className="grid w-full grid-cols-3 gap-1 h-auto p-1">
-              <TabsTrigger value="image-links" className="text-xs">Images</TabsTrigger>
-              <TabsTrigger value="youtube" className="text-xs">YouTube</TabsTrigger>
-              <TabsTrigger value="facebook" className="text-xs">Facebook</TabsTrigger>
+              <TabsTrigger value="image-links" className="text-xs flex items-center gap-1">
+                <Image className="w-3.5 h-3.5" />
+                <span>Images</span>
+              </TabsTrigger>
+              <TabsTrigger value="youtube" className="text-xs flex items-center gap-1">
+                <Youtube className="w-3.5 h-3.5" />
+                <span>YouTube</span>
+              </TabsTrigger>
+              <TabsTrigger value="facebook" className="text-xs flex items-center gap-1">
+                <Facebook className="w-3.5 h-3.5" />
+                <span>Facebook</span>
+              </TabsTrigger>
             </TabsList>
           </div>
 
