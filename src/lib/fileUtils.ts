@@ -67,3 +67,33 @@ export const extractYouTubeVideoId = (url: string): string | null => {
   }
   return null;
 };
+
+export const isOneDriveUrl = (url: string): boolean => {
+  if (!url) return false;
+  return /(?:1drv\.ms|onedrive\.live\.com|sharepoint\.com|onedrive\.com)/i.test(url);
+};
+
+/** Embeddable viewer URL for a OneDrive / SharePoint sharing link. */
+export const buildOneDriveEmbedUrl = (url: string): string => {
+  try {
+    const parsed = new URL(url.trim());
+    parsed.searchParams.delete("action");
+    parsed.searchParams.set("action", "embedview");
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+};
+
+/** Direct-content URL derived from a OneDrive sharing link (works for personal + business links). */
+export const buildOneDriveDirectUrl = (url: string): string => {
+  try {
+    const base64 = btoa(unescape(encodeURIComponent(url.trim())))
+      .replace(/=+$/, "")
+      .replace(/\//g, "_")
+      .replace(/\+/g, "-");
+    return `https://api.onedrive.com/v1.0/shares/u!${base64}/root/content`;
+  } catch {
+    return url;
+  }
+};
