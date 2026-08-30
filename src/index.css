@@ -13,6 +13,9 @@
     /* Card & Surface Colors */
     --card: 0 0% 100%;
     --card-foreground: 215 25% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 25% 15%;
     
     --surface: 210 20% 98%;
     --surface-hover: 210 25% 96%;
