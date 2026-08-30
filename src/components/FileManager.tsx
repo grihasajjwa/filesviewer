@@ -124,7 +124,7 @@ export const FileManager = () => {
     setHasInitializedSelection(true);
   };
 
-  const fetchFiles = async (userId: string) => {
+  const fetchFiles = async (userId: string, retryAfterRefresh = true) => {
     if (fetchInProgressRef.current) {
       pendingFetchUserIdRef.current = userId;
       return;
@@ -140,12 +140,27 @@ export const FileManager = () => {
 
       if (error) {
         console.error('Error fetching files:', error);
+        if (retryAfterRefresh) {
+          const { data: refreshed } = await supabase.auth.refreshSession();
+          if (refreshed.session?.user) {
+            await fetchFiles(refreshed.session.user.id, false);
+            return;
+          }
+        }
         // Show the error toast only once to avoid spamming the user
         if (!networkErrorShownRef.current) {
           networkErrorShownRef.current = true;
           toast.error(error.message || 'Failed to fetch files (Supabase error)');
         }
         return;
+      }
+
+      if (data.length === 0 && retryAfterRefresh) {
+        const { data: refreshed } = await supabase.auth.refreshSession();
+        if (refreshed.session?.user) {
+          await fetchFiles(refreshed.session.user.id, false);
+          return;
+        }
       }
 
       const formattedFiles: FileItem[] = data.map(file => {

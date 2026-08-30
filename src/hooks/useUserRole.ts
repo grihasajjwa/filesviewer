@@ -13,7 +13,7 @@ export const useUserRole = () => {
   useEffect(() => {
     let active = true;
 
-    const resolve = async (uid: string | null) => {
+    const resolve = async (uid: string | null, retryAfterRefresh = true) => {
       if (!uid) {
         if (!active) return;
         setUserId(null);
@@ -29,6 +29,13 @@ export const useUserRole = () => {
         .eq("user_id", uid);
 
       if (!active) return;
+      if (error && retryAfterRefresh) {
+        const { data: refreshed } = await supabase.auth.refreshSession();
+        if (refreshed.session?.user) {
+          await resolve(refreshed.session.user.id, false);
+          return;
+        }
+      }
       if (error) console.error("Failed to load user roles:", error);
       setIsAdmin(Boolean(data?.some((row) => row.role === "admin")));
       setLoading(false);
