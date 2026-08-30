@@ -49,6 +49,38 @@ export type Database = {
           },
         ]
       }
+      file_user_shares: {
+        Row: {
+          created_at: string
+          file_id: string
+          id: string
+          owner_id: string
+          shared_with_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_id: string
+          id?: string
+          owner_id: string
+          shared_with_user_id: string
+        }
+        Update: {
+          created_at?: string
+          file_id?: string
+          id?: string
+          owner_id?: string
+          shared_with_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "file_user_shares_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       files: {
         Row: {
           bucket_name: string
@@ -227,6 +259,7 @@ export type Database = {
           url: string
         }[]
       }
+      get_user_id_by_username: { Args: { _username: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -237,6 +270,14 @@ export type Database = {
       increment_page_visit: {
         Args: { page_path_param: string }
         Returns: undefined
+      }
+      is_file_owner: {
+        Args: { _file_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_file_shared_with: {
+        Args: { _file_id: string; _user_id: string }
+        Returns: boolean
       }
     }
     Enums: {
