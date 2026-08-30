@@ -327,6 +327,73 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
     }
   };
 
+  const handleOneDriveSubmit = async () => {
+    const link = oneDriveLink.trim();
+    if (!link) return;
+
+    if (!isOneDriveUrl(link)) {
+      toast({
+        title: "Invalid link",
+        description: "Paste a OneDrive or SharePoint sharing link.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        toast({
+          title: "Authentication Required",
+          description: "You must be logged in to add OneDrive links",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const name = oneDriveForm.title.trim() || "OneDrive File";
+
+      const { data: dbData, error: dbError } = await supabase
+        .from('files')
+        .insert({
+          user_id: targetUserId ?? user.id,
+          name,
+          type: getFileExtension(name) || "onedrive",
+          size: 0,
+          url: link,
+          bucket_name: "OneDrive",
+          file_path: "OneDrive File",
+        })
+        .select()
+        .single();
+
+      if (dbError) throw dbError;
+
+      onFileUpload([
+        {
+          id: dbData.id,
+          name: dbData.name,
+          type: dbData.type,
+          size: dbData.size,
+          uploadedAt: new Date(dbData.created_at).toISOString().split('T')[0],
+          url: dbData.url,
+        },
+      ]);
+
+      setOneDriveLink("");
+      setOneDriveForm({ title: "", description: "" });
+      toast({ title: "OneDrive File Added", description: "The shared file is ready to preview" });
+    } catch (error) {
+      console.error("OneDrive submission error:", error);
+      toast({
+        title: "Submission Failed",
+        description: "Failed to add the OneDrive file. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+
   const handleDriveFolderSubmit = async () => {
     if (!driveFolderLink.trim()) return;
 
