@@ -137,7 +137,7 @@ export const FilePreview = ({ file, onDelete, isAdmin, isLoading = false }: File
       return (
         <div className="h-full bg-card rounded-lg border border-border overflow-hidden">
           <div className="h-full flex flex-col">
-            <PreviewToolbar icon={FolderOpen} iconClass="text-primary" title="Local Folder">
+            <PreviewToolbar driveFile={file} icon={FolderOpen} iconClass="text-primary" title="Local Folder">
               {isAdmin && (
                 <ActionButton 
                   icon={ExternalLink}
@@ -159,7 +159,7 @@ export const FilePreview = ({ file, onDelete, isAdmin, isLoading = false }: File
       return (
         <div className="h-full bg-card rounded-lg border border-border overflow-hidden">
           <div className="h-full flex flex-col">
-            <PreviewToolbar icon={FolderOpen} iconClass="text-primary" title="Google Drive Folder">
+            <PreviewToolbar driveFile={file} icon={FolderOpen} iconClass="text-primary" title="Google Drive Folder">
               <ActionButton 
                 icon={ExternalLink}
                 label="Open Folder" 
@@ -194,7 +194,7 @@ export const FilePreview = ({ file, onDelete, isAdmin, isLoading = false }: File
       return (
         <div className="h-full bg-card rounded-lg border border-border overflow-hidden">
           <div className="h-full flex flex-col">
-            <PreviewToolbar icon={FileText} iconClass="text-primary" title="Google Drive File">
+            <PreviewToolbar driveFile={file} icon={FileText} iconClass="text-primary" title="Google Drive File">
               <ActionButton 
                 icon={ExternalLink}
                 label="Open" 
@@ -233,7 +233,7 @@ export const FilePreview = ({ file, onDelete, isAdmin, isLoading = false }: File
       return (
         <div className="h-full bg-card rounded-lg border border-border overflow-hidden">
           <div className="h-full flex flex-col">
-            <PreviewToolbar icon={FileText} iconClass="text-blue-500" title="Word Document">
+            <PreviewToolbar driveFile={file} icon={FileText} iconClass="text-blue-500" title="Word Document">
               <ActionButton 
                 icon={ExternalLink}
                 label="Download" 
@@ -267,7 +267,7 @@ export const FilePreview = ({ file, onDelete, isAdmin, isLoading = false }: File
       return (
         <div className="h-full bg-card rounded-lg border border-border overflow-hidden">
           <div className="h-full flex flex-col">
-            <PreviewToolbar icon={FileText} iconClass="text-green-500" title="Excel Viewer">
+            <PreviewToolbar driveFile={file} icon={FileText} iconClass="text-green-500" title="Excel Viewer">
               <ActionButton 
                 icon={ExternalLink}
                 label="Download" 
@@ -301,7 +301,7 @@ export const FilePreview = ({ file, onDelete, isAdmin, isLoading = false }: File
       return (
         <div className="h-full bg-card rounded-lg border border-border overflow-hidden">
           <div className="h-full flex flex-col">
-            <PreviewToolbar icon={FileText} iconClass="text-orange-500" title="PowerPoint">
+            <PreviewToolbar driveFile={file} icon={FileText} iconClass="text-orange-500" title="PowerPoint">
               <Button 
                 variant="default" 
                 size="sm"
@@ -350,7 +350,7 @@ export const FilePreview = ({ file, onDelete, isAdmin, isLoading = false }: File
       return (
         <div className="h-full bg-card rounded-lg border border-border overflow-hidden">
           <div className="h-full flex flex-col">
-            <PreviewToolbar icon={Music} iconClass="text-purple-500" title="Audio Player">
+            <PreviewToolbar driveFile={file} icon={Music} iconClass="text-purple-500" title="Audio Player">
               <ActionButton 
                 icon={ExternalLink}
                 label="Open" 
@@ -390,7 +390,7 @@ export const FilePreview = ({ file, onDelete, isAdmin, isLoading = false }: File
         return (
           <div className="h-full bg-card rounded-lg border border-border overflow-hidden">
             <div className="h-full flex flex-col">
-              <PreviewToolbar icon={FileText} iconClass="text-destructive" title="PDF Viewer">
+              <PreviewToolbar driveFile={file} icon={FileText} iconClass="text-destructive" title="PDF Viewer">
                 <ActionButton 
                   icon={ExternalLink}
                   label="Open" 
@@ -421,7 +421,7 @@ export const FilePreview = ({ file, onDelete, isAdmin, isLoading = false }: File
         return (
           <div className="h-full bg-card rounded-lg border border-border overflow-hidden">
             <div className="h-full flex flex-col">
-              <PreviewToolbar icon={Eye} iconClass="text-primary" title="Image Preview">
+              <PreviewToolbar driveFile={file} icon={Eye} iconClass="text-primary" title="Image Preview">
                 <ActionButton 
                   icon={ExternalLink}
                   label="Open" 
@@ -559,7 +559,7 @@ export const FilePreview = ({ file, onDelete, isAdmin, isLoading = false }: File
         return (
           <div className="h-full bg-card rounded-lg border border-border overflow-hidden">
             <div className="h-full flex flex-col">
-              <PreviewToolbar icon={Facebook} iconClass="text-blue-600" title="Facebook Post">
+              <PreviewToolbar driveFile={file} icon={Facebook} iconClass="text-blue-600" title="Facebook Post">
                 <Button 
                   variant="secondary" 
                   size="sm"

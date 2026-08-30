@@ -1,6 +1,7 @@
 import type { ElementType, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { DriveActions } from "./DriveActions";
+import { UserShareButton } from "./UserShareButton";
 import type { FileItem } from "./FileManager";
 
 interface PreviewToolbarProps {
