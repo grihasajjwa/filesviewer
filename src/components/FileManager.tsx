@@ -93,8 +93,10 @@ export const FileManager = () => {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  // Ref to prevent concurrent fetches
+  const [authReady, setAuthReady] = useState(false);
+  // Keep a session-change fetch from being lost while another fetch is active.
   const fetchInProgressRef = useRef(false);
+  const pendingFetchUserIdRef = useRef<string | null>(null);
   // Ref to ensure we show the network/CORS error only once
   const networkErrorShownRef = useRef(false);
 
@@ -123,7 +125,10 @@ export const FileManager = () => {
   };
 
   const fetchFiles = async (userId: string) => {
-    if (fetchInProgressRef.current) return;
+    if (fetchInProgressRef.current) {
+      pendingFetchUserIdRef.current = userId;
+      return;
+    }
     fetchInProgressRef.current = true;
     try {
       setLoading(true);
@@ -310,6 +315,11 @@ export const FileManager = () => {
     } finally {
       fetchInProgressRef.current = false;
       setLoading(false);
+      const pendingUserId = pendingFetchUserIdRef.current;
+      pendingFetchUserIdRef.current = null;
+      if (pendingUserId) {
+        void fetchFiles(pendingUserId);
+      }
     }
   };
 
@@ -358,10 +368,12 @@ export const FileManager = () => {
   const handleAuthChange = (newUser: SupabaseUser | null, newSession: Session | null) => {
     setUser(newUser);
     setSession(newSession);
+    setAuthReady(true);
     setLoading(false);
     
     // Reset admin status when user changes
     if (!newUser) {
+      pendingFetchUserIdRef.current = null;
       setAdminMode(false);
       setFiles([]);
       setSelectedFile(null);
@@ -457,11 +469,16 @@ export const FileManager = () => {
       const user = session?.user || null;
       setUser(user);
       setSession(session);
+      setAuthReady(true);
       if (user) {
         fetchFiles(user.id);
       } else {
         setLoading(false);
       }
+    }).catch((error) => {
+      console.error('Error restoring auth session:', error);
+      setAuthReady(true);
+      setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -481,6 +498,14 @@ export const FileManager = () => {
   }, [isPreviewSwitching]);
 
   // Show auth screen if not logged in
+  if (!authReady) {
+    return (
+      <div className="min-h-screen bg-gradient-surface flex items-center justify-center p-4">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-surface flex items-center justify-center p-4">

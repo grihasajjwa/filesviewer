@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,22 +18,6 @@ export const Auth = ({ user, onAuthChange }: AuthProps) => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-
-  useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        onAuthChange(session?.user ?? null, session);
-      }
-    );
-
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      onAuthChange(session?.user ?? null, session);
-    });
-
-    return () => subscription.unsubscribe();
-  }, [onAuthChange]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
