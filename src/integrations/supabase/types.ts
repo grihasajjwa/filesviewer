@@ -55,21 +55,27 @@ export type Database = {
           file_id: string
           id: string
           owner_id: string
+          shared_by_username: string | null
           shared_with_user_id: string
+          shared_with_username: string | null
         }
         Insert: {
           created_at?: string
           file_id: string
           id?: string
           owner_id: string
+          shared_by_username?: string | null
           shared_with_user_id: string
+          shared_with_username?: string | null
         }
         Update: {
           created_at?: string
           file_id?: string
           id?: string
           owner_id?: string
+          shared_by_username?: string | null
           shared_with_user_id?: string
+          shared_with_username?: string | null
         }
         Relationships: [
           {

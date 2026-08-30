@@ -184,6 +184,11 @@ export const FileList = ({
                           {file.name}
                         </p>
                         <StatusBadge type={getBadgeType(file)} />
+                        {file.sharedByUsername && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary whitespace-nowrap">
+                            Shared
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center space-x-2 mt-1">
                         <span className="text-xs text-muted-foreground">
