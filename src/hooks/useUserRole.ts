@@ -12,8 +12,10 @@ export const useUserRole = () => {
 
   useEffect(() => {
     let active = true;
+    let requestId = 0;
 
     const resolve = async (uid: string | null, retryAfterRefresh = true) => {
+      const currentRequest = ++requestId;
       if (!uid) {
         if (!active) return;
         setUserId(null);
@@ -28,7 +30,7 @@ export const useUserRole = () => {
         .select("role")
         .eq("user_id", uid);
 
-      if (!active) return;
+      if (!active || currentRequest !== requestId) return;
       if (error && retryAfterRefresh) {
         const { data: refreshed } = await supabase.auth.refreshSession();
         if (refreshed.session?.user) {
@@ -47,7 +49,11 @@ export const useUserRole = () => {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      // getSession above initializes this hook. A token refresh does not
+      // change the user's permissions, so querying roles again only creates
+      // duplicate requests and can hide the Dashboard during a refresh.
+      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
       const uid = session?.user?.id ?? null;
       setLoading(true);
       // defer the Supabase call out of the auth callback

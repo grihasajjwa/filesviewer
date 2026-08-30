@@ -155,14 +155,6 @@ export const FileManager = () => {
         return;
       }
 
-      if (data.length === 0 && retryAfterRefresh) {
-        const { data: refreshed } = await supabase.auth.refreshSession();
-        if (refreshed.session?.user) {
-          await fetchFiles(refreshed.session.user.id, false);
-          return;
-        }
-      }
-
       const formattedFiles: FileItem[] = data.map(file => {
         if (file.drive_link) {
           const fileId = extractDriveFileId(file.drive_link);
@@ -484,20 +476,9 @@ export const FileManager = () => {
       handleAuthChange(user, session);
     });
 
-    const sessionRestore = supabase.auth.getSession();
-    const restoreTimeout = new Promise<null>((resolve) => {
-      window.setTimeout(() => resolve(null), 5000);
-    });
-
-    Promise.race([sessionRestore, restoreTimeout]).then((result) => {
-      if (!result) {
-        console.warn('Auth session restore timed out; waiting for auth events.');
-        setAuthReady(true);
-        setLoading(false);
-        return;
-      }
-
-      const session = result.data.session;
+    // Do not treat a slow storage/network read as a signed-out user. Supabase
+    // persists the session locally and will refresh it when necessary.
+    supabase.auth.getSession().then(({ data: { session } }) => {
       const restoredUser = session?.user || null;
       setUser(restoredUser);
       setSession(session);
