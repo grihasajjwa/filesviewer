@@ -48,6 +48,11 @@ interface AdminFileRow {
   created_at: string;
 }
 
+interface AdminShareRow {
+  file_id: string;
+  shared_with_user_id: string;
+}
+
 const toFileItem = (row: AdminFileRow): FileItem => ({
   id: row.id,
   name: row.name,
@@ -67,16 +72,18 @@ const Admin = () => {
   const { isAdmin, loading: roleLoading } = useUserRole();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [rows, setRows] = useState<AdminFileRow[]>([]);
+  const [shares, setShares] = useState<AdminShareRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [openUserId, setOpenUserId] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
   const [showDelete, setShowDelete] = useState(true);
+  const [fileSearch, setFileSearch] = useState("");
   const { confirmDelete, dialog: deleteDialog } = useConfirmDelete({ allowSkip: true });
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [profilesRes, filesRes] = await Promise.all([
+    const [profilesRes, filesRes, sharesRes] = await Promise.all([
       supabase.from("profiles").select("id, email, username, display_name").order("created_at"),
       supabase
         .from("files")
@@ -84,18 +91,43 @@ const Admin = () => {
           "id, user_id, name, type, size, url, thumbnail, drive_link, drive_folder_link, folder_name, created_at",
         )
         .order("created_at", { ascending: false }),
+      supabase.from("file_user_shares").select("file_id, shared_with_user_id"),
     ]);
 
     if (profilesRes.error) toast.error(profilesRes.error.message);
     if (filesRes.error) toast.error(filesRes.error.message);
+    if (sharesRes.error) toast.error(sharesRes.error.message);
 
     setProfiles((profilesRes.data as Profile[]) ?? []);
     setRows((filesRes.data as AdminFileRow[]) ?? []);
+    setShares((sharesRes.data as AdminShareRow[]) ?? []);
     setLoading(false);
   }, []);
 
   useEffect(() => {
     if (isAdmin) load();
+  }, [isAdmin, load]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const channel = supabase
+      .channel("admin-file-updates")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "files" },
+        () => load(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "file_user_shares" },
+        () => load(),
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
   }, [isAdmin, load]);
 
   const stats = useMemo(() => {
@@ -106,8 +138,16 @@ const Admin = () => {
       entry.bytes += Number(row.size) || 0;
       map.set(row.user_id, entry);
     });
+    shares.forEach((share) => {
+      const row = rows.find((file) => file.id === share.file_id);
+      if (!row) return;
+      const entry = map.get(share.shared_with_user_id) ?? { count: 0, bytes: 0 };
+      entry.count += 1;
+      entry.bytes += Number(row.size) || 0;
+      map.set(share.shared_with_user_id, entry);
+    });
     return map;
-  }, [rows]);
+  }, [rows, shares]);
 
   const visibleProfiles = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -119,9 +159,23 @@ const Admin = () => {
 
   const openProfile = profiles.find((p) => p.id === openUserId) ?? null;
   const openFiles = useMemo(
-    () => (openUserId ? rows.filter((r) => r.user_id === openUserId) : []),
-    [rows, openUserId],
+    () =>
+      openUserId
+        ? rows.filter(
+            (row) =>
+              row.user_id === openUserId ||
+              shares.some(
+                (share) => share.file_id === row.id && share.shared_with_user_id === openUserId,
+              ),
+          )
+        : [],
+    [rows, shares, openUserId],
   );
+  const visibleOpenFiles = useMemo(() => {
+    const query = fileSearch.trim().toLowerCase();
+    if (!query) return openFiles;
+    return openFiles.filter((row) => `${row.name} ${row.type}`.toLowerCase().includes(query));
+  }, [fileSearch, openFiles]);
 
   const totalBytes = rows.reduce((sum, r) => sum + (Number(r.size) || 0), 0);
 
@@ -249,6 +303,7 @@ const Admin = () => {
                       onClick={() => {
                         setOpenUserId(profile.id);
                         setSelectedFile(null);
+                        setFileSearch("");
                       }}
                       className="text-left"
                     >
@@ -290,6 +345,7 @@ const Admin = () => {
                 onClick={() => {
                   setOpenUserId(null);
                   setSelectedFile(null);
+                  setFileSearch("");
                 }}
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
@@ -315,13 +371,24 @@ const Admin = () => {
                   <AdminPanel targetUserId={openProfile.id} onFileUpload={() => load()} />
                 </Card>
 
+                <div className="relative">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={fileSearch}
+                    onChange={(e) => setFileSearch(e.target.value)}
+                    placeholder="Search files"
+                    className="pl-9"
+                    aria-label="Search files"
+                  />
+                </div>
+
                 <Card className="divide-y divide-border max-h-[60vh] overflow-y-auto">
-                  {openFiles.length === 0 && (
+                  {visibleOpenFiles.length === 0 && (
                     <p className="p-4 text-sm text-muted-foreground">
-                      This user has no files yet.
+                      {fileSearch ? "No files match that search." : "This user has no files yet."}
                     </p>
                   )}
-                  {openFiles.map((row) => (
+                  {visibleOpenFiles.map((row) => (
                     <div
                       key={row.id}
                       className={`flex items-center gap-2 p-3 ${
