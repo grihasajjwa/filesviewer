@@ -34,7 +34,8 @@ export const PreviewToolbar = ({
     </div>
     <div className="flex flex-wrap gap-1.5 sm:gap-2">
       {children}
-      {driveFile && <DriveActions key={driveFile.id} file={driveFile} />}
+      {driveFile && <DriveActions key={`drive-${driveFile.id}`} file={driveFile} />}
+      {driveFile && <UserShareButton key={`user-${driveFile.id}`} file={driveFile} />}
     </div>
   </div>
 );
