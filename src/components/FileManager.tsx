@@ -155,6 +155,14 @@ export const FileManager = () => {
         return;
       }
 
+      if (data.length === 0 && retryAfterRefresh) {
+        const { data: refreshed } = await supabase.auth.refreshSession();
+        if (refreshed.session?.user) {
+          await fetchFiles(refreshed.session.user.id, false);
+          return;
+        }
+      }
+
       const formattedFiles: FileItem[] = data.map(file => {
         if (file.drive_link) {
           const fileId = extractDriveFileId(file.drive_link);
