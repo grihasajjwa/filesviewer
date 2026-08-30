@@ -465,13 +465,31 @@ export const FileManager = () => {
 
   // Initial auth check
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const user = session?.user || null;
-      setUser(user);
+      handleAuthChange(user, session);
+    });
+
+    const sessionRestore = supabase.auth.getSession();
+    const restoreTimeout = new Promise<null>((resolve) => {
+      window.setTimeout(() => resolve(null), 5000);
+    });
+
+    Promise.race([sessionRestore, restoreTimeout]).then((result) => {
+      if (!result) {
+        console.warn('Auth session restore timed out; waiting for auth events.');
+        setAuthReady(true);
+        setLoading(false);
+        return;
+      }
+
+      const session = result.data.session;
+      const restoredUser = session?.user || null;
+      setUser(restoredUser);
       setSession(session);
       setAuthReady(true);
-      if (user) {
-        fetchFiles(user.id);
+      if (restoredUser) {
+        fetchFiles(restoredUser.id);
       } else {
         setLoading(false);
       }
@@ -481,12 +499,9 @@ export const FileManager = () => {
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      const user = session?.user || null;
-      handleAuthChange(user, session);
-    });
-
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
