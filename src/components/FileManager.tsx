@@ -135,7 +135,6 @@ export const FileManager = () => {
       const { data, error } = await supabase
         .from('files')
         .select('*')
-        .eq('user_id', userId)
         .or('folder_name.is.null,type.eq.folder')
         .order('created_at', { ascending: false });
 
