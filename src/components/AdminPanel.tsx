@@ -18,6 +18,7 @@ interface AdminPanelProps {
 export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
   const [driveFileLink, setDriveFileLink] = useState("");
   const [driveFolderLink, setDriveFolderLink] = useState("");
+  const [oneDriveLink, setOneDriveLink] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [facebookUrl, setFacebookUrl] = useState("");
@@ -29,6 +30,7 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
   const [folderUploadForm, setFolderUploadForm] = useState({ title: "", description: "" });
   const [driveFileForm, setDriveFileForm] = useState({ title: "", description: "" });
   const [driveFolderForm, setDriveFolderForm] = useState({ title: "", description: "" });
+  const [oneDriveForm, setOneDriveForm] = useState({ title: "", description: "" });
   const [imageLinksForm, setImageLinksForm] = useState({ title: "", description: "" });
   const [youtubeForm, setYoutubeForm] = useState({ title: "", description: "" });
   const [facebookForm, setFacebookForm] = useState({ title: "", description: "" });
@@ -769,6 +771,14 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
     }
   };
 
+  const isOneDriveUrl = (link: string) =>
+    /^https?:\/\/(?:[\w-]+\.)?(?:1drv\.ms|onedrive\.live\.com|sharepoint\.com)\//i.test(link);
+
+  const getFileExtension = (name: string) => {
+    const extension = name.split(".").pop()?.toLowerCase();
+    return extension && extension !== name.toLowerCase() ? extension : "onedrive";
+  };
+
   return (
         <Card className="m-4 p-4 bg-surface border-border shadow-sm">
       <div className="space-y-4">
@@ -802,7 +812,7 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
                 <span>Drive Folder</span>
               </TabsTrigger>
             </TabsList>
-            <TabsList className="grid w-full grid-cols-3 gap-1 h-auto p-1">
+            <TabsList className="grid w-full grid-cols-4 gap-1 h-auto p-1">
               <TabsTrigger value="image-links" className="text-xs flex items-center gap-1">
                 <Image className="w-3.5 h-3.5" />
                 <span>Images</span>
@@ -814,6 +824,10 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
               <TabsTrigger value="facebook" className="text-xs flex items-center gap-1">
                 <Facebook className="w-3.5 h-3.5" />
                 <span>Facebook</span>
+              </TabsTrigger>
+              <TabsTrigger value="onedrive" className="text-xs flex items-center gap-1">
+                <HardDrive className="w-3.5 h-3.5 text-blue-600" />
+                <span>OneDrive</span>
               </TabsTrigger>
             </TabsList>
           </div>
@@ -1004,6 +1018,42 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
               <p className="text-xs text-muted-foreground flex items-center">
                 <FolderOpen className="w-3 h-3 mr-1" />
                 Connect a Google Drive folder to import files
+              </p>
+            </div>
+          </TabsContent>
+
+          {/* OneDrive Link Tab */}
+          <TabsContent value="onedrive" className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="onedrive-title">Title</Label>
+              <Input
+                id="onedrive-title"
+                placeholder="Enter file title..."
+                value={oneDriveForm.title}
+                onChange={(e) => setOneDriveForm({ ...oneDriveForm, title: e.target.value })}
+                className="text-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex space-x-2">
+                <Input
+                  placeholder="Paste OneDrive or SharePoint link..."
+                  value={oneDriveLink}
+                  onChange={(e) => setOneDriveLink(e.target.value)}
+                  className="flex-1 text-sm"
+                />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleOneDriveSubmit}
+                  disabled={!oneDriveLink.trim()}
+                >
+                  <Link2 className="w-4 h-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground flex items-center">
+                <HardDrive className="w-3 h-3 mr-1" />
+                Add a OneDrive or SharePoint file link
               </p>
             </div>
           </TabsContent>
