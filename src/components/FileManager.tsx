@@ -22,6 +22,7 @@ import {
 
 export interface FileItem {
   id: string;
+  user_id?: string;
   name: string;
   type: string;
   size: number;
@@ -168,6 +169,7 @@ export const FileManager = () => {
           const fileId = extractDriveFileId(file.drive_link);
           return {
             id: file.id,
+            user_id: file.user_id,
             name: file.name,
             type: file.type,
             size: file.size,
@@ -180,6 +182,7 @@ export const FileManager = () => {
         if (file.drive_folder_link) {
           return {
             id: file.id,
+            user_id: file.user_id,
             name: file.name,
             type: file.type,
             size: file.size,
@@ -194,6 +197,7 @@ export const FileManager = () => {
           // For local folders, we need to fetch the folder files
           return {
             id: file.id,
+            user_id: file.user_id,
             name: file.name,
             type: file.type,
             size: file.size,
@@ -206,6 +210,7 @@ export const FileManager = () => {
         }
         return {
           id: file.id,
+          user_id: file.user_id,
           name: file.name,
           type: file.type,
           size: file.size,
@@ -281,6 +286,7 @@ export const FileManager = () => {
           if (formattedFiles.some((f) => f.id === row.id)) return;
           formattedFiles.push({
             id: row.id,
+            user_id: row.user_id,
             name: row.name,
             type: row.type,
             size: row.size,
@@ -637,7 +643,7 @@ export const FileManager = () => {
               <FilePreview
                 key={previewSwitchKey}
                 file={selectedFile}
-                onDelete={handleDelete}
+                onDelete={isAdmin && selectedFile?.user_id === user?.id ? handleDelete : undefined}
                 isAdmin={isAdmin}
                 isLoading={isPreviewSwitching}
               />

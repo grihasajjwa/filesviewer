@@ -55,6 +55,7 @@ interface AdminShareRow {
 
 const toFileItem = (row: AdminFileRow): FileItem => ({
   id: row.id,
+  user_id: row.user_id,
   name: row.name,
   type: row.type,
   size: row.size,
@@ -69,7 +70,7 @@ const toFileItem = (row: AdminFileRow): FileItem => ({
 const megabytes = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 
 const Admin = () => {
-  const { isAdmin, loading: roleLoading } = useUserRole();
+  const { isAdmin, loading: roleLoading, userId } = useUserRole();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [rows, setRows] = useState<AdminFileRow[]>([]);
   const [shares, setShares] = useState<AdminShareRow[]>([]);
@@ -77,7 +78,7 @@ const Admin = () => {
   const [search, setSearch] = useState("");
   const [openUserId, setOpenUserId] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
-  const [showDelete, setShowDelete] = useState(true);
+  const [showDelete, setShowDelete] = useState(false);
   const [fileSearch, setFileSearch] = useState("");
   const { confirmDelete, dialog: deleteDialog } = useConfirmDelete({ allowSkip: true });
 
@@ -405,7 +406,7 @@ const Admin = () => {
                           {new Date(row.created_at).toLocaleDateString()}
                         </p>
                       </button>
-                      {showDelete && (
+                      {showDelete && row.user_id === userId && (
                         <Button
                           variant="ghost"
                           size="icon"
@@ -425,7 +426,7 @@ const Admin = () => {
                   <FilePreview
                     key={selectedFile?.id ?? "none"}
                     file={selectedFile}
-                    onDelete={showDelete ? handleDelete : undefined}
+                    onDelete={showDelete && selectedFile?.id && rows.find((row) => row.id === selectedFile.id)?.user_id === userId ? handleDelete : undefined}
                     isAdmin
                     isLoading={false}
                   />
