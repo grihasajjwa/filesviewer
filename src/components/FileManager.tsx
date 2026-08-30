@@ -32,6 +32,7 @@ export interface FileItem {
   drive_folder_link?: string;
   folder_name?: string;
   folderFiles?: FileItem[];
+  sharedByUsername?: string;
 }
 
 const mockFiles: FileItem[] = [
@@ -238,6 +239,41 @@ export const FileManager = () => {
               : [];
           });
         }
+      }
+
+      // Files other users shared with this user
+      const { data: incomingShares } = await supabase
+        .from('file_user_shares')
+        .select('file_id, shared_by_username')
+        .eq('shared_with_user_id', userId);
+
+      if (incomingShares && incomingShares.length > 0) {
+        const sharedIds = incomingShares.map((s) => s.file_id);
+        const { data: sharedRows } = await supabase
+          .from('files')
+          .select('*')
+          .in('id', sharedIds);
+
+        const sharedByMap = new Map(
+          incomingShares.map((s) => [s.file_id, s.shared_by_username ?? 'another user']),
+        );
+
+        (sharedRows ?? []).forEach((row) => {
+          if (formattedFiles.some((f) => f.id === row.id)) return;
+          formattedFiles.push({
+            id: row.id,
+            name: row.name,
+            type: row.type,
+            size: row.size,
+            uploadedAt: new Date(row.created_at).toISOString().split('T')[0],
+            url: row.drive_folder_link ?? row.drive_link ?? row.url,
+            thumbnail: row.thumbnail ?? undefined,
+            drive_link: row.drive_link ?? undefined,
+            drive_folder_link: row.drive_folder_link ?? undefined,
+            folder_name: row.folder_name ?? undefined,
+            sharedByUsername: sharedByMap.get(row.id),
+          });
+        });
       }
 
       setFiles(formattedFiles);
