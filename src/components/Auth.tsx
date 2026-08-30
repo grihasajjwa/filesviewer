@@ -59,38 +59,20 @@ export const Auth = ({ user, onAuthChange }: AuthProps) => {
     }
   };
 
-  const handleSignOut = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      
-      // If session is already missing, just clear the state
-      if (error && error.message.includes('session_not_found')) {
-        onAuthChange(null, null);
-        toast({
-          title: "Signed out",
-          description: "You have been successfully signed out.",
-        });
-        return;
-      }
-      
-      if (error) throw error;
-      
-      // Explicitly update parent state
-      onAuthChange(null, null);
-      
-      toast({
-        title: "Signed out",
-        description: "You have been successfully signed out.",
-      });
-    } catch (error: any) {
-      // If any other error, still clear the state and show success
-      // (user's intent is to sign out regardless of session state)
-      onAuthChange(null, null);
-      toast({
-        title: "Signed out",
-        description: "You have been successfully signed out.",
-      });
-    }
+  const handleSignOut = () => {
+    // Update the application immediately. Waiting for a network request here
+    // made the control appear unresponsive on slower mobile connections.
+    onAuthChange(null, null);
+    toast({
+      title: "Signed out",
+      description: "You have been successfully signed out on this device.",
+    });
+
+    // Local sign-out clears this browser's persisted session without relying
+    // on a network round trip. Other signed-in devices remain unaffected.
+    void supabase.auth.signOut({ scope: "local" }).then(({ error }) => {
+      if (error) console.error("Failed to clear the local session:", error);
+    });
   };
 
   if (user) {

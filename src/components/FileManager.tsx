@@ -471,14 +471,30 @@ export const FileManager = () => {
 
   // Initial auth check
   useEffect(() => {
+    let sessionRestoreFinished = false;
+    const loadingFallback = window.setTimeout(() => {
+      // Keep the stored session intact. This only prevents an unresponsive
+      // mobile storage/auth lookup from blocking the screen forever; a later
+      // successful lookup will still restore the user automatically.
+      if (!sessionRestoreFinished) {
+        console.warn('Session restore is taking longer than expected.');
+        setAuthReady(true);
+        setLoading(false);
+      }
+    }, 8000);
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      sessionRestoreFinished = true;
+      window.clearTimeout(loadingFallback);
       const user = session?.user || null;
       handleAuthChange(user, session);
     });
 
-    // Do not treat a slow storage/network read as a signed-out user. Supabase
-    // persists the session locally and will refresh it when necessary.
+    // Supabase persists the session locally and will refresh it when necessary.
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (sessionRestoreFinished) return;
+      sessionRestoreFinished = true;
+      window.clearTimeout(loadingFallback);
       const restoredUser = session?.user || null;
       setUser(restoredUser);
       setSession(session);
@@ -489,12 +505,15 @@ export const FileManager = () => {
         setLoading(false);
       }
     }).catch((error) => {
+      sessionRestoreFinished = true;
+      window.clearTimeout(loadingFallback);
       console.error('Error restoring auth session:', error);
       setAuthReady(true);
       setLoading(false);
     });
 
     return () => {
+      window.clearTimeout(loadingFallback);
       subscription.unsubscribe();
     };
   }, []);
