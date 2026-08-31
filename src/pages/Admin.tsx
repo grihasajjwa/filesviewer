@@ -213,20 +213,25 @@ const Admin = () => {
     setCreatingUser(true);
 
     try {
-      const { data, error } = await supabase.rpc("admin_create_user", {
-        p_email: email,
-        p_password: password,
-        p_display_name: displayName || null,
+      const { data, error } = await supabase.functions.invoke("create-user", {
+        body: {
+          email,
+          password,
+          display_name: displayName || undefined,
+        },
       });
 
       if (error) throw error;
 
-      const createdUser = Array.isArray(data) ? data[0] : data;
+      const createdUser = data?.user;
       toast.success(createdUser?.email ? `Created user ${createdUser.email}` : "User created");
       setCreateUserForm({ email: "", password: "", displayName: "" });
       await load();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to create user.";
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to create user.";
       toast.error(message);
     } finally {
       setCreatingUser(false);
