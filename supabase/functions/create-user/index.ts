@@ -15,13 +15,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supabase = createClient(
+    // Use the caller's token only to identify and authorize the request.  Do not
+    // attach it to the service-role client below: doing so overrides the service
+    // role Authorization header for the Admin API request.
+    const requester = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
       { global: { headers: { Authorization: authHeader } } },
     );
 
-    const { data: userData, error: userError } = await supabase.auth.getUser();
+    const { data: userData, error: userError } = await requester.auth.getUser();
     if (userError || !userData?.user) {
       return new Response(JSON.stringify({ error: "Not authenticated" }), {
         status: 401,
@@ -29,7 +32,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { data: roleData, error: roleError } = await supabase
+    const { data: roleData, error: roleError } = await requester
       .from("user_roles")
       .select("role")
       .eq("user_id", userData.user.id)
@@ -61,7 +64,14 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { data, error } = await supabase.auth.admin.createUser({
+    // This client deliberately has no caller Authorization header so the
+    // service-role key is used for the Supabase Admin API.
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
+    const { data, error } = await admin.auth.admin.createUser({
       email,
       password,
       email_confirm: true,

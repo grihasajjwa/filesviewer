@@ -228,10 +228,20 @@ const Admin = () => {
       setCreateUserForm({ email: "", password: "", displayName: "" });
       await load();
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Unable to create user.";
+      // Edge Functions return their useful validation/admin error in the
+      // response body.  `FunctionsHttpError.message` only says that the
+      // endpoint returned a non-2xx status, which hides the actual cause.
+      let message = "Unable to create user.";
+      if (error instanceof Error) {
+        message = error.message;
+        const context = (error as Error & { context?: Response }).context;
+        if (context instanceof Response) {
+          const body = await context.clone().json().catch(() => null);
+          if (body && typeof body === "object" && "error" in body && typeof body.error === "string") {
+            message = body.error;
+          }
+        }
+      }
       toast.error(message);
     } finally {
       setCreatingUser(false);
