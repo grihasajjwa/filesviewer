@@ -9,6 +9,7 @@ import {
   RefreshCw,
   Search,
   Trash2,
+  UserPlus,
   Users,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -80,6 +81,12 @@ const Admin = () => {
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
   const [showDelete, setShowDelete] = useState(false);
   const [fileSearch, setFileSearch] = useState("");
+  const [createUserForm, setCreateUserForm] = useState({
+    email: "",
+    password: "",
+    displayName: "",
+  });
+  const [creatingUser, setCreatingUser] = useState(false);
   const { confirmDelete, dialog: deleteDialog } = useConfirmDelete({ allowSkip: true });
 
   const load = useCallback(async () => {
@@ -191,6 +198,41 @@ const Admin = () => {
     load();
   };
 
+  const handleCreateUser = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const email = createUserForm.email.trim();
+    const password = createUserForm.password;
+    const displayName = createUserForm.displayName.trim();
+
+    if (!email || !password) {
+      toast.error("Email and password are required.");
+      return;
+    }
+
+    setCreatingUser(true);
+
+    try {
+      const { data, error } = await supabase.rpc("admin_create_user", {
+        p_email: email,
+        p_password: password,
+        p_display_name: displayName || null,
+      });
+
+      if (error) throw error;
+
+      const createdUser = Array.isArray(data) ? data[0] : data;
+      toast.success(createdUser?.email ? `Created user ${createdUser.email}` : "User created");
+      setCreateUserForm({ email: "", password: "", displayName: "" });
+      await load();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to create user.";
+      toast.error(message);
+    } finally {
+      setCreatingUser(false);
+    }
+  };
+
   if (roleLoading) {
     return (
       <div className="min-h-screen bg-gradient-surface p-4 sm:p-6 space-y-4">
@@ -277,6 +319,49 @@ const Admin = () => {
                 </div>
               </Card>
             </div>
+
+            <Card className="p-4 space-y-4">
+              <div className="flex items-center gap-2">
+                <UserPlus className="w-4 h-4 text-primary" />
+                <h2 className="text-sm font-semibold text-foreground">Create new user</h2>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                This creates an account immediately without requiring email verification.
+              </p>
+
+              <form onSubmit={handleCreateUser} className="grid gap-3 md:grid-cols-[1.3fr_1fr_1fr_auto]">
+                <Input
+                  type="email"
+                  value={createUserForm.email}
+                  onChange={(event) =>
+                    setCreateUserForm((current) => ({ ...current, email: event.target.value }))
+                  }
+                  placeholder="Email"
+                  aria-label="New user email"
+                />
+                <Input
+                  type="text"
+                  value={createUserForm.displayName}
+                  onChange={(event) =>
+                    setCreateUserForm((current) => ({ ...current, displayName: event.target.value }))
+                  }
+                  placeholder="Display name"
+                  aria-label="New user display name"
+                />
+                <Input
+                  type="password"
+                  value={createUserForm.password}
+                  onChange={(event) =>
+                    setCreateUserForm((current) => ({ ...current, password: event.target.value }))
+                  }
+                  placeholder="Password"
+                  aria-label="New user password"
+                />
+                <Button type="submit" disabled={creatingUser}>
+                  {creatingUser ? "Creating..." : "Create user"}
+                </Button>
+              </form>
+            </Card>
 
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
