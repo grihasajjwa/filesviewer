@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { FileItem } from "./FileManager";
 import { formatFileSize } from "@/lib/fileUtils";
 import { StatusBadge } from "./StatusBadge";
+import { isOneDriveUrl } from "@/lib/fileUtils";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useState, useRef, useEffect } from "react";
 import {
@@ -58,6 +59,7 @@ const getFileIcon = (type: string) => {
 
 const getBadgeType = (file: FileItem) => {
   if (file.type === 'facebook') return 'facebook';
+  if (file.url && isOneDriveUrl(file.url)) return 'onedrive';
   if (file.drive_link) return 'drive';
   if (file.drive_folder_link) return 'folder';
   if (file.url && file.url.startsWith('http') && !file.url.includes('supabase')) return 'internet';
