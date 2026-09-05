@@ -738,6 +738,8 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
         /https:\/\/drive\.google\.com\/file\/d\/([-\w]{10,})/, // Shared file link
         /https:\/\/drive\.google\.com\/open\?id=([-\w]{10,})/, // Open link
         /https:\/\/drive\.google\.com\/uc\?id=([-\w]{10,})/, // Direct download link
+        /https:\/\/docs\.google\.com\/(?:spreadsheets|document|presentation|forms|drawings)\/d\/([-\w]{10,})/, // Docs/Sheets/Slides links
+        /^([-\w]{10,})$/, // Bare file ID
       ];
 
       for (const pattern of patterns) {
