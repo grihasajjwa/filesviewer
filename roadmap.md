@@ -1,0 +1,1 @@
+- Loosen Drive link ID regex (25+ chars -> 10+)

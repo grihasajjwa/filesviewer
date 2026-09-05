@@ -1,7 +1,7 @@
-import { CheckCircle, Clock, AlertCircle, Folder, Globe, HardDrive, Facebook } from "lucide-react";
+import { CheckCircle, Clock, AlertCircle, Folder, Globe, HardDrive, Facebook, Cloud } from "lucide-react";
 
 interface StatusBadgeProps {
-  type: 'uploaded' | 'drive' | 'folder' | 'internet' | 'processing' | 'error' | 'facebook';
+  type: 'uploaded' | 'onedrive' | 'drive' | 'folder' | 'internet' | 'processing' | 'error' | 'facebook';
   text?: string;
 }
 
@@ -13,6 +13,12 @@ export const StatusBadge = ({ type, text }: StatusBadgeProps) => {
           icon: <CheckCircle className="w-3 h-3" />,
           color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
           defaultText: 'Uploaded'
+        };
+      case 'onedrive':
+        return {
+          icon: <Cloud className="w-3 h-3" />,
+          color: 'bg-sky-100 text-sky-800 border-sky-200',
+          defaultText: 'OneDrive'
         };
       case 'drive':
         return {

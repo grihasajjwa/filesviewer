@@ -3,7 +3,7 @@ import { Download, FileText, Eye, ExternalLink, FolderOpen, Presentation, Maximi
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatFileSize, isPowerPointFile, isWordFile, isExcelFile, isAudioFile, isYouTubeUrl, extractYouTubeVideoId } from "@/lib/fileUtils";
+import { formatFileSize, isPowerPointFile, isWordFile, isExcelFile, isAudioFile, isYouTubeUrl, extractYouTubeVideoId, isOneDriveUrl, buildOneDriveEmbedUrl, buildOneDriveDirectUrl } from "@/lib/fileUtils";
 import { saveAs } from "file-saver";
 import { FolderCarousel } from "./FolderCarousel";
 import { useState, useRef } from "react";
@@ -222,6 +222,45 @@ export const FilePreview = ({ file, onDelete, isAdmin, isLoading = false }: File
                   }}
                 />
               </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (isOneDriveUrl(file.url)) {
+      return (
+        <div className="h-full bg-card rounded-lg border border-border overflow-hidden">
+          <div className="h-full flex flex-col">
+            <PreviewToolbar driveFile={file} icon={FileText} iconClass="text-blue-600" title="OneDrive File">
+              <ActionButton
+                icon={ExternalLink}
+                label="Open"
+                onClick={() => window.open(file.url, '_blank')}
+              />
+              <ActionButton
+                icon={Download}
+                label="Download"
+                onClick={() => window.open(buildOneDriveDirectUrl(file.url), '_blank')}
+              />
+              {isAdmin && (
+                <ActionButton
+                  icon={ExternalLink}
+                  label="Delete"
+                  onClick={() => handleDelete(file.id)}
+                  variant="destructive"
+                />
+              )}
+            </PreviewToolbar>
+            <div className="flex-1 bg-muted/10 p-2 sm:p-4 overflow-auto">
+              <iframe
+                src={buildOneDriveEmbedUrl(file.url)}
+                title="OneDrive File Preview"
+                className="w-full h-full border-none rounded-lg"
+                style={{ height: '100%', minHeight: '400px' }}
+                allow="autoplay; fullscreen"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
             </div>
           </div>
         </div>
