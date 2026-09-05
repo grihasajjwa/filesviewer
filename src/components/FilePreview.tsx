@@ -3,7 +3,7 @@ import { Download, FileText, Eye, ExternalLink, FolderOpen, Presentation, Maximi
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatFileSize, isPowerPointFile, isWordFile, isExcelFile, isAudioFile, isYouTubeUrl, extractYouTubeVideoId } from "@/lib/fileUtils";
+import { formatFileSize, isPowerPointFile, isWordFile, isExcelFile, isAudioFile, isYouTubeUrl, extractYouTubeVideoId, isOneDriveUrl, buildOneDriveEmbedUrl, buildOneDriveDirectUrl } from "@/lib/fileUtils";
 import { saveAs } from "file-saver";
 import { FolderCarousel } from "./FolderCarousel";
 import { useState, useRef } from "react";
