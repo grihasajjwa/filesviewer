@@ -61,7 +61,7 @@ const toFileItem = (row: AdminFileRow): FileItem => ({
   type: row.type,
   size: row.size,
   uploadedAt: new Date(row.created_at).toISOString().split("T")[0],
-  url: row.drive_folder_link ?? row.url,
+  url: row.drive_folder_link ?? row.drive_link ?? row.url,
   thumbnail: row.thumbnail ?? undefined,
   drive_link: row.drive_link ?? undefined,
   drive_folder_link: row.drive_folder_link ?? undefined,
