@@ -344,9 +344,15 @@ export const FileManager = () => {
   };
 
   const extractDriveFileId = (url: string) => {
-    const regex = /(?:https?:\/\/)?(?:www\.)?drive\.google\.com\/(?:file\/d\/|open\?id=)([\w-]+)/;
-    const match = url.match(regex);
-    return match ? match[1] : null;
+    const patterns = [
+      /(?:https?:\/\/)?(?:www\.)?drive\.google\.com\/(?:file\/d\/|open\?id=)([\w-]+)/,
+      /(?:https?:\/\/)?docs\.google\.com\/(?:spreadsheets|document|presentation|forms|drawings)\/d\/([\w-]+)/,
+    ];
+    for (const regex of patterns) {
+      const match = url.match(regex);
+      if (match) return match[1];
+    }
+    return null;
   };
 
   const fetchDriveMetadata = async (fileId) => {
