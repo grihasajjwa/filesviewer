@@ -735,9 +735,9 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
   const extractDriveFileId = (link: string): string | null => {
     try {
       const patterns = [
-        /https:\/\/drive\.google\.com\/file\/d\/([-\w]{25,})/, // Shared file link
-        /https:\/\/drive\.google\.com\/open\?id=([-\w]{25,})/, // Open link
-        /https:\/\/drive\.google\.com\/uc\?id=([-\w]{25,})/, // Direct download link
+        /https:\/\/drive\.google\.com\/file\/d\/([-\w]{10,})/, // Shared file link
+        /https:\/\/drive\.google\.com\/open\?id=([-\w]{10,})/, // Open link
+        /https:\/\/drive\.google\.com\/uc\?id=([-\w]{10,})/, // Direct download link
       ];
 
       for (const pattern of patterns) {
@@ -756,8 +756,8 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
   const extractDriveFolderId = (link: string): string | null => {
     try {
       const patterns = [
-        /https:\/\/drive\.google\.com\/drive\/folders\/([-\w]{25,})/, // Shared folder link
-        /https:\/\/drive\.google\.com\/drive\/u\/\d+\/folders\/([-\w]{25,})/, // User-specific folder link
+        /https:\/\/drive\.google\.com\/drive\/folders\/([-\w]{10,})/, // Shared folder link
+        /https:\/\/drive\.google\.com\/drive\/u\/\d+\/folders\/([-\w]{10,})/, // User-specific folder link
       ];
 
       for (const pattern of patterns) {
