@@ -119,10 +119,22 @@ export const FilePreview = ({ file, onDelete, isAdmin, isLoading = false }: File
   }
 
   const extractDriveFileId = (url: string) => {
-    const regex = /[-\w]{25,}/;
-    const matches = url.match(regex);
+    const matches = url.match(/[-\w]{10,}/);
     return matches ? matches[0] : null;
   };
+
+  // Build the right embed URL for any Google Drive / Docs / Sheets / Slides link
+  const buildGoogleEmbedUrl = (url: string): string => {
+    const id = extractDriveFileId(url);
+    if (!id) return url;
+    if (/docs\.google\.com\/spreadsheets/.test(url)) return `https://docs.google.com/spreadsheets/d/${id}/preview`;
+    if (/docs\.google\.com\/document/.test(url)) return `https://docs.google.com/document/d/${id}/preview`;
+    if (/docs\.google\.com\/presentation/.test(url)) return `https://docs.google.com/presentation/d/${id}/preview`;
+    return `https://drive.google.com/file/d/${id}/preview`;
+  };
+
+  const isGoogleDriveFile = (url: string) =>
+    /drive\.google\.com|docs\.google\.com/.test(url);
 
   const handleDelete = (id: string) => {
     if (!onDelete) return;
@@ -190,7 +202,7 @@ export const FilePreview = ({ file, onDelete, isAdmin, isLoading = false }: File
       );
     }
 
-    if (file.url.includes("drive.google.com")) {
+    if (isGoogleDriveFile(file.url)) {
       return (
         <div className="h-full bg-card rounded-lg border border-border overflow-hidden">
           <div className="h-full flex flex-col">
@@ -212,7 +224,7 @@ export const FilePreview = ({ file, onDelete, isAdmin, isLoading = false }: File
             <div className="flex-1 bg-muted/10 p-2 sm:p-4 overflow-auto">
               <div className="h-full w-full">
                 <iframe
-                  src={`https://drive.google.com/file/d/${extractDriveFileId(file.url)}/preview`}
+                  src={buildGoogleEmbedUrl(file.url)}
                   title="Google Drive File Preview"
                   className="w-full h-full border-none rounded-lg"
                   style={{ height: '100%', minHeight: '400px' }}
