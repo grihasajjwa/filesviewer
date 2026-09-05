@@ -202,29 +202,14 @@ export const FilePreview = ({ file, onDelete, isAdmin, isLoading = false }: File
       );
     }
 
-    if (file.url.includes("drive.google.com")) {
+    if (isGoogleDriveFile(file.url)) {
       return (
         <div className="h-full bg-card rounded-lg border border-border overflow-hidden">
           <div className="h-full flex flex-col">
             <PreviewToolbar driveFile={file} icon={FileText} iconClass="text-primary" title="Google Drive File">
-              <ActionButton 
-                icon={ExternalLink}
-                label="Open" 
-                onClick={() => window.open(file.url, '_blank')}
-              />
-              {isAdmin && (
-                <ActionButton 
-                  icon={ExternalLink}
-                  label="Delete" 
-                  onClick={() => handleDelete(file.id)}
-                  variant="destructive"
-                />
-              )}
-            </PreviewToolbar>
-            <div className="flex-1 bg-muted/10 p-2 sm:p-4 overflow-auto">
-              <div className="h-full w-full">
+...
                 <iframe
-                  src={`https://drive.google.com/file/d/${extractDriveFileId(file.url)}/preview`}
+                  src={buildGoogleEmbedUrl(file.url)}
                   title="Google Drive File Preview"
                   className="w-full h-full border-none rounded-lg"
                   style={{ height: '100%', minHeight: '400px' }}
