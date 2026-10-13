@@ -10,6 +10,7 @@ import { User, Shield, Menu, LayoutDashboard } from "lucide-react";
 import { User as SupabaseUser, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import DevDebugPanel from "./DevDebugPanel";
 import {
@@ -88,6 +89,7 @@ export const FileManager = () => {
   // files to their own folder; only real admins get the Dashboard.
   const [adminMode, setAdminMode] = useState(false);
   const isAdmin = adminMode;
+  const isMobile = useIsMobile();
   const [files, setFiles] = useState<FileItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [hasInitializedSelection, setHasInitializedSelection] = useState(false);
@@ -572,7 +574,7 @@ export const FileManager = () => {
         <Sidebar className="border-r border-border" collapsible="icon">
           <SidebarContent>
             <div className="h-full flex flex-col">
-              {isAdmin && (
+              {isAdmin && !isMobile && (
                 <div className="border-b border-border">
                   <AdminPanel onFileUpload={handleFileUpload} />
                 </div>
@@ -639,6 +641,11 @@ export const FileManager = () => {
 
           {/* File Preview */}
           <div className="flex-1 bg-surface overflow-y-auto p-2 sm:p-4">
+            {isAdmin && isMobile && (
+              <div className="mb-3 rounded-lg border border-border bg-card shadow-sm">
+                <AdminPanel onFileUpload={handleFileUpload} />
+              </div>
+            )}
             <ErrorBoundary
               resetKey={previewSwitchKey}
               onReset={() => {

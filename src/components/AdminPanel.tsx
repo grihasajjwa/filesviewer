@@ -53,8 +53,10 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files) return;
+    const input = event.target;
+    const files = input.files ? Array.from(input.files) : [];
+    input.value = "";
+    if (files.length === 0) return;
 
     setIsUploading(true);
     
@@ -73,13 +75,14 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
       }
 
       const uploadPromises = selectedFiles.map(async (file) => {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const parts = file.name.split('.');
+        const fileExt = parts.length > 1 ? parts.pop()!.toLowerCase().replace(/[^a-z0-9]/g, '') : 'bin';
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt || 'bin'}`;
         
         // Upload to Supabase Storage
         const { data, error } = await supabase.storage
           .from('files')
-          .upload(fileName, file);
+          .upload(fileName, file, { contentType: file.type || 'application/octet-stream' });
 
         if (error) throw error;
 
