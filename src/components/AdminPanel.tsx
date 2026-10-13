@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState , useRef } from "react";
 import { Upload, Link2, Plus, FolderOpen, FileText, Image, Globe, Youtube, Facebook, HardDrive, Cloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,8 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
   const [facebookForm, setFacebookForm] = useState({ title: "", description: "" });
   
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
   const MAX_UPLOAD_SIZE_BYTES = 50 * 1024 * 1024;
 
   const validateUploadSize = (files: FileList | File[]) => {
@@ -867,7 +869,7 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
                 variant="default"
                 size="sm"
                 className="w-full flex items-center justify-center"
-                onClick={() => document.getElementById('file-input')?.click()}
+                onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
               >
                 <Upload className="w-4 h-4 mr-2" />
@@ -875,6 +877,7 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
               </Button>
               <input
                 id="file-input"
+                ref={fileInputRef}
                 type="file"
                 multiple
                 onChange={handleFileUpload}
@@ -914,7 +917,7 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
                 variant="default"
                 size="sm"
                 className="w-full flex items-center justify-center"
-                onClick={() => document.getElementById('folder-input')?.click()}
+                onClick={() => folderInputRef.current?.click()}
                 disabled={isFolderUploading}
               >
                 <FolderOpen className="w-4 h-4 mr-2" />
@@ -922,6 +925,7 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
               </Button>
               <input
                 id="folder-input"
+                ref={folderInputRef}
                 type="file"
                 {...({ webkitdirectory: "", directory: "", multiple: true } as any)}
                 onChange={handleFolderUpload}
