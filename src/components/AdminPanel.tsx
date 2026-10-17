@@ -872,15 +872,15 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
             <div className="space-y-2">
               <Label>Upload Files</Label>
               <Button
-                variant="default"
+                variant="outline"
                 size="sm"
                 className="w-full flex items-center justify-center"
                 disabled={isUploading}
                 asChild
               >
                 <label htmlFor="file-input" className="cursor-pointer flex items-center justify-center">
-                  <Upload className="w-4 h-4 mr-2" />
-                  {isUploading ? "Uploading..." : "Upload Files"}
+                  <FolderOpen className="w-4 h-4 mr-2" />
+                  Choose Files
                 </label>
               </Button>
               <input
@@ -888,10 +888,29 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
                 ref={fileInputRef}
                 type="file"
                 multiple
-                onChange={handleFileUpload}
+                onChange={handleFileSelect}
                 className="sr-only"
                 disabled={isUploading}
               />
+              {selectedFiles.length > 0 && (
+                <div className="rounded-md border bg-muted/50 px-3 py-2 text-xs space-y-1 max-h-24 overflow-y-auto">
+                  {selectedFiles.map((file, index) => (
+                    <p key={`${file.name}-${index}`} className="truncate">
+                      {file.name} ({(file.size / (1024 * 1024)).toFixed(1)} MB)
+                    </p>
+                  ))}
+                </div>
+              )}
+              <Button
+                variant="default"
+                size="sm"
+                className="w-full flex items-center justify-center"
+                disabled={isUploading || selectedFiles.length === 0}
+                onClick={() => handleFileUpload(selectedFiles)}
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                {isUploading ? "Uploading..." : "Upload Files"}
+              </Button>
               <p className="text-xs text-muted-foreground">Maximum size: 50MB per file</p>
             </div>
           </TabsContent>
