@@ -54,10 +54,15 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
     return selectedFiles;
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const input = event.target;
     const files = input.files ? Array.from(input.files) : [];
     input.value = "";
+    if (files.length === 0) return;
+    setSelectedFiles(files);
+  };
+
+  const handleFileUpload = async (files: File[]) => {
     if (files.length === 0) return;
 
     setIsUploading(true);
