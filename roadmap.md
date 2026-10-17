@@ -1,1 +1,3 @@
-- Loosen Drive link ID regex (25+ chars -> 10+)
+- [ ] Fix mobile file picking in personal and admin folder uploads.
+- [ ] Convert HEIC uploads to JPG and verify conversion.
+- [ ] Verify upload selection and report authenticated testing limitations.
