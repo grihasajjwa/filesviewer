@@ -129,6 +129,7 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
 
       const newFiles: FileItem[] = await Promise.all(uploadPromises);
       onFileUpload(newFiles);
+      setSelectedFiles([]);
       
       toast({
         title: "Upload Successful",
