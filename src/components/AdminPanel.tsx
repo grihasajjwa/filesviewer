@@ -1,4 +1,4 @@
-import { useState , useRef } from "react";
+import { useState, useId } from "react";
 import { Upload, Link2, Plus, FolderOpen, FileText, Image, Globe, Youtube, Facebook, HardDrive, Cloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { FileItem } from "./FileManager";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { isOneDriveUrl, getFileExtension } from "@/lib/fileUtils";
+import { isHeicPhoto, prepareUpload } from "@/lib/prepareUpload";
 
 interface AdminPanelProps {
   targetUserId?: string;
@@ -38,8 +39,8 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
   
   const { toast } = useToast();
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const folderInputRef = useRef<HTMLInputElement>(null);
+  const pickerId = useId();
+  const [uploadStatus, setUploadStatus] = useState("");
   const MAX_UPLOAD_SIZE_BYTES = 50 * 1024 * 1024;
 
   const validateUploadSize = (files: FileList | File[]) => {
@@ -63,13 +64,23 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
     setSelectedFiles(files);
   };
 
+  const prepareFiles = async (files: File[]) => {
+    const prepared: File[] = [];
+    for (const file of files) {
+      setUploadStatus(await isHeicPhoto(file) ? `Converting ${file.name} to JPG...` : "Uploading...");
+      prepared.push(await prepareUpload(file));
+    }
+    setUploadStatus("Uploading...");
+    return validateUploadSize(prepared);
+  };
+
   const handleFileUpload = async (files: File[]) => {
     if (files.length === 0) return;
 
     setIsUploading(true);
     
     try {
-      const selectedFiles = validateUploadSize(files);
+      const selectedFiles = await prepareFiles(validateUploadSize(files));
 
       // Get current user
       const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -84,7 +95,7 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
 
       const uploadPromises = selectedFiles.map(async (file) => {
         const parts = file.name.split('.');
-        const fileExt = parts.length > 1 ? parts.pop()!.toLowerCase().replace(/[^a-z0-9]/g, '') : 'bin';
+        const fileExt = parts.length > 1 ? (parts.pop() ?? 'bin').toLowerCase().replace(/[^a-z0-9]/g, '') : 'bin';
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt || 'bin'}`;
         
         // Upload to Supabase Storage
@@ -145,17 +156,19 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
       });
     } finally {
       setIsUploading(false);
+      setUploadStatus("");
     }
   };
 
   const handleFolderUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files) return;
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    if (files.length === 0) return;
 
     setIsFolderUploading(true);
     
     try {
-      const selectedFiles = validateUploadSize(files);
+      const selectedFiles = await prepareFiles(validateUploadSize(files));
 
       // Get current user
       const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -169,7 +182,8 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
       }
 
       // Get folder name from the first file's path
-      const firstFile = selectedFiles[0];
+      const firstFile = files[0];
+      if (!firstFile) return;
       const folderPath = firstFile.webkitRelativePath;
       const folderName = folderPath.split('/')[0];
 
@@ -199,7 +213,7 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
         // Upload to Supabase Storage
         const { data, error } = await supabase.storage
           .from('files')
-          .upload(fileName, file);
+          .upload(fileName, file, { contentType: file.type || 'application/octet-stream' });
 
         if (error) throw error;
 
@@ -268,6 +282,7 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
       });
     } finally {
       setIsFolderUploading(false);
+      setUploadStatus("");
     }
   };
 
@@ -870,26 +885,13 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
               />
             </div>
             <div className="space-y-2">
-              <Label>Upload Files</Label>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full flex items-center justify-center"
-                disabled={isUploading}
-                asChild
-              >
-                <label htmlFor="file-input" className="cursor-pointer flex items-center justify-center">
-                  <FolderOpen className="w-4 h-4 mr-2" />
-                  Choose Files
-                </label>
-              </Button>
-              <input
-                id="file-input"
-                ref={fileInputRef}
+              <Label htmlFor={`${pickerId}-files`}>Choose Files</Label>
+              <Input
+                id={`${pickerId}-files`}
                 type="file"
                 multiple
                 onChange={handleFileSelect}
-                className="sr-only"
+                className="h-auto min-h-11 w-full min-w-0 cursor-pointer py-2 text-base file:mr-3 file:cursor-pointer file:rounded-md file:bg-secondary file:px-3 file:py-1 file:text-secondary-foreground"
                 disabled={isUploading}
               />
               {selectedFiles.length > 0 && (
@@ -911,6 +913,7 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
                 <Upload className="w-4 h-4 mr-2" />
                 {isUploading ? "Uploading..." : "Upload Files"}
               </Button>
+              {isUploading && <p role="status" className="break-words text-xs text-muted-foreground">{uploadStatus || "Uploading..."}</p>}
               <p className="text-xs text-muted-foreground">Maximum size: 50MB per file</p>
             </div>
           </TabsContent>
@@ -938,28 +941,16 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
               />
             </div>
             <div className="space-y-2">
-              <Label>Upload Folder</Label>
-              <Button
-                variant="default"
-                size="sm"
-                className="w-full flex items-center justify-center"
-                disabled={isFolderUploading}
-                asChild
-              >
-                <label htmlFor="folder-input" className="cursor-pointer flex items-center justify-center">
-                  <FolderOpen className="w-4 h-4 mr-2" />
-                  {isFolderUploading ? "Uploading..." : "Upload Folder"}
-                </label>
-              </Button>
-              <input
-                id="folder-input"
-                ref={folderInputRef}
+              <Label htmlFor={`${pickerId}-folder`}>Upload Folder</Label>
+              <Input
+                id={`${pickerId}-folder`}
                 type="file"
                 {...({ webkitdirectory: "", directory: "", multiple: true } as any)}
                 onChange={handleFolderUpload}
-                className="sr-only"
+                className="h-auto min-h-11 w-full min-w-0 cursor-pointer py-2 text-base file:mr-3 file:cursor-pointer file:rounded-md file:bg-secondary file:px-3 file:py-1 file:text-secondary-foreground"
                 disabled={isFolderUploading}
               />
+              {isFolderUploading && <p role="status" className="break-words text-xs text-muted-foreground">{uploadStatus || "Uploading..."}</p>}
               <p className="text-xs text-muted-foreground flex items-center">
                 <FolderOpen className="w-3 h-3 mr-1" />
                 Select an entire folder with all its files
