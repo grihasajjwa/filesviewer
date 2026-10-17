@@ -37,6 +37,7 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
   const [facebookForm, setFacebookForm] = useState({ title: "", description: "" });
   
   const { toast } = useToast();
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const MAX_UPLOAD_SIZE_BYTES = 50 * 1024 * 1024;
