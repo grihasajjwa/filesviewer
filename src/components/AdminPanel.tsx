@@ -863,17 +863,18 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="file-upload-button">Upload Files</Label>
+              <Label>Upload Files</Label>
               <Button
-                id="file-upload-button"
                 variant="default"
                 size="sm"
                 className="w-full flex items-center justify-center"
-                onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
+                asChild
               >
-                <Upload className="w-4 h-4 mr-2" />
-                {isUploading ? "Uploading..." : "Upload Files"}
+                <label htmlFor="file-input" className="cursor-pointer flex items-center justify-center">
+                  <Upload className="w-4 h-4 mr-2" />
+                  {isUploading ? "Uploading..." : "Upload Files"}
+                </label>
               </Button>
               <input
                 id="file-input"
@@ -881,7 +882,7 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
                 type="file"
                 multiple
                 onChange={handleFileUpload}
-                className="hidden"
+                className="sr-only"
                 disabled={isUploading}
               />
               <p className="text-xs text-muted-foreground">Maximum size: 50MB per file</p>
@@ -911,17 +912,18 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="folder-upload-button">Upload Folder</Label>
+              <Label>Upload Folder</Label>
               <Button
-                id="folder-upload-button"
                 variant="default"
                 size="sm"
                 className="w-full flex items-center justify-center"
-                onClick={() => folderInputRef.current?.click()}
                 disabled={isFolderUploading}
+                asChild
               >
-                <FolderOpen className="w-4 h-4 mr-2" />
-                {isFolderUploading ? "Uploading..." : "Upload Folder"}
+                <label htmlFor="folder-input" className="cursor-pointer flex items-center justify-center">
+                  <FolderOpen className="w-4 h-4 mr-2" />
+                  {isFolderUploading ? "Uploading..." : "Upload Folder"}
+                </label>
               </Button>
               <input
                 id="folder-input"
@@ -929,7 +931,7 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
                 type="file"
                 {...({ webkitdirectory: "", directory: "", multiple: true } as any)}
                 onChange={handleFolderUpload}
-                className="hidden"
+                className="sr-only"
                 disabled={isFolderUploading}
               />
               <p className="text-xs text-muted-foreground flex items-center">
