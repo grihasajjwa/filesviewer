@@ -10,7 +10,7 @@ import { FileItem } from "./FileManager";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { isOneDriveUrl, getFileExtension } from "@/lib/fileUtils";
-import { isHeicPhoto, prepareUpload } from "@/lib/prepareUpload";
+import { prepareUploads } from "@/lib/prepareUpload";
 
 interface AdminPanelProps {
   targetUserId?: string;
@@ -65,11 +65,11 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
   };
 
   const prepareFiles = async (files: File[]) => {
-    const prepared: File[] = [];
-    for (const file of files) {
-      setUploadStatus(await isHeicPhoto(file) ? `Converting ${file.name} to JPG...` : "Uploading...");
-      prepared.push(await prepareUpload(file));
-    }
+    const prepared = await prepareUploads(files, (done, total, name) => {
+      setUploadStatus(
+        total > 1 ? `Converting ${done} of ${total} photos...` : `Converting ${name} to JPG...`,
+      );
+    });
     setUploadStatus("Uploading...");
     return validateUploadSize(prepared);
   };

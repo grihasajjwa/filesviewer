@@ -1,5 +1,5 @@
 import { expect, mock, test } from "bun:test";
-import { isHeicPhoto, prepareUpload } from "../src/lib/prepareUpload";
+import { isHeicPhoto, prepareUpload, prepareUploads } from "../src/lib/prepareUpload";
 
 mock.module("heic-to/csp", () => ({
   heicTo: async () => new Blob([new Uint8Array([255, 216, 255, 217])], { type: "image/jpeg" }),
@@ -24,4 +24,16 @@ test("PDF and JPG files are unchanged", async () => {
     const file = new File(["unchanged"], name);
     expect(await prepareUpload(file)).toBe(file);
   }
+});
+
+test("Multiple photos convert with progress callbacks", async () => {
+  const files = [
+    new File(["a"], "one.heic", { type: "image/heic" }),
+    new File(["b"], "two.heic", { type: "image/heic" }),
+  ];
+  const progress: number[] = [];
+  const results = await prepareUploads(files, (done) => progress.push(done));
+  expect(results.map((file) => file.name)).toEqual(["one.jpg", "two.jpg"]);
+  expect(results.every((file) => file.type === "image/jpeg")).toBe(true);
+  expect(progress).toEqual([1, 2]);
 });
