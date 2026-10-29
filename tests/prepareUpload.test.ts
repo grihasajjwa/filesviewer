@@ -1,5 +1,5 @@
 import { expect, mock, test } from "bun:test";
-import { isHeicPhoto, prepareUpload } from "./prepareUpload";
+import { isHeicPhoto, prepareUpload } from "../src/lib/prepareUpload";
 
 mock.module("heic-to/csp", () => ({
   heicTo: async () => new Blob([new Uint8Array([255, 216, 255, 217])], { type: "image/jpeg" }),
