@@ -1,4 +1,4 @@
-import { useState, useId } from "react";
+import { useState, useId, useRef } from "react";
 import { Upload, Link2, Plus, FolderOpen, FileText, Image, Globe, Youtube, Facebook, HardDrive, Cloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +40,7 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
   const { toast } = useToast();
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const pickerId = useId();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadStatus, setUploadStatus] = useState("");
   const MAX_UPLOAD_SIZE_BYTES = 50 * 1024 * 1024;
 
@@ -59,7 +60,6 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const input = event.target;
     const files = input.files ? Array.from(input.files) : [];
-    input.value = "";
     if (files.length === 0) return;
     setSelectedFiles(files);
   };
@@ -141,6 +141,7 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
       const newFiles: FileItem[] = await Promise.all(uploadPromises);
       onFileUpload(newFiles);
       setSelectedFiles([]);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       
       toast({
         title: "Upload Successful",
@@ -888,8 +889,10 @@ export const AdminPanel = ({ onFileUpload, targetUserId }: AdminPanelProps) => {
               <Label htmlFor={`${pickerId}-files`}>Choose Files</Label>
               <Input
                 id={`${pickerId}-files`}
+                ref={fileInputRef}
                 type="file"
                 multiple
+                onClick={(event) => { event.currentTarget.value = ""; }}
                 onChange={handleFileSelect}
                 className="h-auto min-h-11 w-full min-w-0 cursor-pointer py-2 text-base file:mr-3 file:cursor-pointer file:rounded-md file:bg-secondary file:px-3 file:py-1 file:text-secondary-foreground"
                 disabled={isUploading}
