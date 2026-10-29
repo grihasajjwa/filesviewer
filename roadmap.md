@@ -1,3 +1,4 @@
-- [ ] Fix mobile file picking in personal and admin folder uploads.
-- [ ] Convert HEIC uploads to JPG and verify conversion.
-- [ ] Verify upload selection and report authenticated testing limitations.
+- [x] Fix mobile file picking in personal and admin folder uploads; native chooser verified in mobile and desktop browser checks.
+- [x] Convert HEIC uploads to JPG; tests passed and real HEIC decoded into a visible JPEG.
+- [x] Verify upload selection and report authenticated testing limitations.
+- [ ] Verify uploads on a physical phone inside signed-in user/admin folders — blocked by external unmanaged authentication and no physical device access.
