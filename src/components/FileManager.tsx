@@ -35,6 +35,7 @@ export interface FileItem {
   folder_name?: string;
   folderFiles?: FileItem[];
   sharedByUsername?: string;
+  ownerUsername?: string;
 }
 
 const mockFiles: FileItem[] = [
@@ -300,6 +301,19 @@ export const FileManager = () => {
             folder_name: row.folder_name ?? undefined,
             sharedByUsername: sharedByMap.get(row.id),
           });
+        });
+      }
+
+      // Owner usernames, shown under file names in the admin file list
+      const { data: profileRows } = await supabase
+        .from("profiles")
+        .select("id, username, display_name");
+      if (profileRows) {
+        const ownerNameById = new Map(
+          profileRows.map((p) => [p.id, p.username || p.display_name || "user"]),
+        );
+        formattedFiles.forEach((item) => {
+          if (item.user_id) item.ownerUsername = ownerNameById.get(item.user_id);
         });
       }
 

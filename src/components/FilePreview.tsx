@@ -10,6 +10,7 @@ import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ActionButton, PreviewToolbar } from "./PreviewToolbar";
+import { ResizeDownload } from "./ResizeDownload";
 import { useConfirmDelete } from "./ConfirmDeleteDialog";
 interface FilePreviewProps {
   file: FileItem | null;
@@ -456,6 +457,7 @@ export const FilePreview = ({ file, onDelete, isAdmin, isLoading = false }: File
                   />
                 )}
               </PreviewToolbar>
+              <ResizeDownload file={file} kind="pdf" />
               <div className="flex-1 bg-muted/10 overflow-auto">
                 <iframe
                   src={file.url}
@@ -487,6 +489,7 @@ export const FilePreview = ({ file, onDelete, isAdmin, isLoading = false }: File
                   />
                 )}
               </PreviewToolbar>
+              <ResizeDownload file={file} kind="image" />
               <div className="flex-1 bg-muted/10 p-2 sm:p-4 overflow-auto">
                 <div className="h-full flex items-center justify-center">
                   <img
