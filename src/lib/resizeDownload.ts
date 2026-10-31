@@ -61,7 +61,7 @@ export const resizePdfBlob = async (bytes: Uint8Array, percent: number): Promise
     target.drawPage(page, { xScale: scale, yScale: scale });
   });
   const saved = await out.save();
-  return new Blob([saved], { type: "application/pdf" });
+  return new Blob([saved as BlobPart], { type: "application/pdf" });
 };
 
 /**
