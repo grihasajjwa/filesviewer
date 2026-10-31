@@ -192,6 +192,11 @@ export const FileList = ({
                           </span>
                         )}
                       </div>
+                      {isAdmin && file.ownerUsername && (
+                        <p className="text-[11px] text-muted-foreground truncate">
+                          {file.ownerUsername}
+                        </p>
+                      )}
                       <div className="flex items-center space-x-2 mt-1">
                         <span className="text-xs text-muted-foreground">
                           {file.type === 'folder' ? 'Folder' : formatFileSize(file.size)}

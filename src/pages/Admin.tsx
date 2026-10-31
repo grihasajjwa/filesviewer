@@ -187,6 +187,12 @@ const Admin = () => {
 
   const totalBytes = rows.reduce((sum, r) => sum + (Number(r.size) || 0), 0);
 
+  const ownerNameById = useMemo(
+    () =>
+      new Map(profiles.map((p) => [p.id, p.username || p.display_name || "user"])),
+    [profiles],
+  );
+
   const handleDelete = async (fileId: string) => {
     const { error } = await supabase.from("files").delete().eq("id", fileId);
     if (error) {
@@ -501,6 +507,9 @@ const Admin = () => {
                         onClick={() => setSelectedFile(toFileItem(row))}
                       >
                         <p className="text-sm font-medium truncate">{row.name}</p>
+                        <p className="text-[11px] text-muted-foreground truncate">
+                          {ownerNameById.get(row.user_id) ?? "user"}
+                        </p>
                         <p className="text-xs text-muted-foreground">
                           {formatFileSize(Number(row.size) || 0)} ·{" "}
                           {new Date(row.created_at).toLocaleDateString()}
