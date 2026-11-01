@@ -3,7 +3,7 @@ import { Download, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { downloadResized } from "@/lib/resizeDownload";
+import { bytesToKb, clampTargetKb, downloadResized } from "@/lib/resizeDownload";
 import type { FileItem } from "./FileManager";
 
 interface ResizeDownloadProps {
@@ -12,22 +12,34 @@ interface ResizeDownloadProps {
 }
 
 /**
- * Download section for image and PDF previews: a size input (percent of the
- * original, 100 = original size by default) plus a Download button.
+ * Download section for image and PDF previews: a size input in KB (defaulting to
+ * the original size) plus a Download button. A smaller value gets a resized copy.
  */
 export const ResizeDownload = ({ file, kind }: ResizeDownloadProps) => {
-  const [percent, setPercent] = useState("100");
+  const originalKb = file.size > 0 ? bytesToKb(file.size) : null;
+  const [kb, setKb] = useState(originalKb ? String(originalKb) : "");
   const [busy, setBusy] = useState(false);
 
-  const parsed = Number(percent);
-  const isOriginal = !Number.isFinite(parsed) || parsed === 100;
+  const parsed = Number(kb);
+  const isOriginal =
+    originalKb !== null && (!Number.isFinite(parsed) || clampTargetKb(parsed) >= originalKb);
 
   const handleDownload = async () => {
     if (busy) return;
+    const target = Number(kb);
+    if (!Number.isFinite(target) || target <= 0) {
+      toast.error("Enter a size in KB, e.g. 500.");
+      return;
+    }
     setBusy(true);
+    const used = clampTargetKb(target);
     try {
-      await downloadResized(file.url, file.name, parsed, kind);
-      toast.success(isOriginal ? "Downloaded original file" : `Downloaded at ${Math.round(parsed)}% size`);
+      await downloadResized(file.url, file.name, used, kind);
+      toast.success(
+        originalKb !== null && used >= originalKb
+          ? "Downloaded original file"
+          : `Downloaded at about ${used} KB`,
+      );
     } catch (error) {
       console.error("Resize download failed:", error);
       toast.error(
@@ -46,20 +58,24 @@ export const ResizeDownload = ({ file, kind }: ResizeDownloadProps) => {
       <Input
         type="number"
         inputMode="numeric"
-        min={5}
-        max={200}
-        value={percent}
-        onChange={(e) => setPercent(e.target.value)}
-        aria-label="Download size percent"
+        min={1}
+        value={kb}
+        onChange={(e) => setKb(e.target.value)}
+        aria-label="Download size in KB"
+        placeholder={originalKb ? String(originalKb) : "e.g. 500"}
         className="w-20 h-7 text-xs"
       />
-      <span className="text-xs text-muted-foreground">%</span>
+      <span className="text-xs text-muted-foreground">KB</span>
       <Button size="sm" variant="secondary" onClick={handleDownload} disabled={busy} className="text-xs h-7 px-2 sm:h-8 sm:px-3">
         {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
         <span className="hidden xs:inline">{busy ? "Preparing..." : "Download"}</span>
       </Button>
       <span className="text-xs text-muted-foreground">
-        {isOriginal ? "Original size" : "Resized copy"}
+        {originalKb !== null
+          ? isOriginal
+            ? `Original size (${originalKb} KB)`
+            : `Resized copy (original: ${originalKb} KB)`
+          : "Enter a size in KB"}
       </span>
     </div>
   );
