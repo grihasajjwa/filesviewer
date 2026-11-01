@@ -161,7 +161,7 @@ const renderPdfToJpegPdf = async (
     await page.render({ canvasContext: ctx, viewport }).promise;
     const jpeg = await toBlob(canvas, "image/jpeg", quality);
     if (!jpeg) throw new Error("Could not render the PDF.");
-    const img = await out.embedJpg(jpeg);
+    const img = await out.embedJpg(new Uint8Array(await jpeg.arrayBuffer()));
     const pdfPage = out.addPage([viewport.width, viewport.height]);
     pdfPage.drawImage(img, { x: 0, y: 0, width: viewport.width, height: viewport.height });
     page.cleanup();
