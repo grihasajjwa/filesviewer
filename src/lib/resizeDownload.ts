@@ -179,7 +179,8 @@ const rasterizePdfToTarget = async (bytes: Uint8Array, targetKb: number): Promis
   await configurePdfWorker();
   const pdfjs = await import("pdfjs-dist");
   // Copy the bytes: the PDF worker takes ownership of the buffer it is given.
-  const doc = await pdfjs.getDocument({ data: bytes.slice() }).promise;
+  const task = pdfjs.getDocument({ data: bytes.slice() });
+  const doc = await task.promise;
   try {
     let scale = Math.min(1.5, Math.max(0.1, Math.sqrt(targetKb / bytesToKb(bytes.byteLength))));
     const candidates: { size: number; blob: Blob }[] = [];
@@ -193,7 +194,7 @@ const rasterizePdfToTarget = async (bytes: Uint8Array, targetKb: number): Promis
     const sizes = candidates.map((c) => bytesToKb(c.size));
     return candidates[pickBestSizeIndex(sizes, targetKb)].blob;
   } finally {
-    await doc.destroy();
+    await task.destroy();
   }
 };
 
