@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { bytesToKb, clampTargetKb, withSizeSuffix } from "../src/lib/resizeDownload";
+import { bytesToKb, clampTargetKb, pickBestSizeIndex, withSizeSuffix } from "../src/lib/resizeDownload";
 
 describe("clampTargetKb", () => {
   test("clamps zero and negatives up to 1 KB", () => {
@@ -28,6 +28,25 @@ describe("bytesToKb", () => {
   test("rounds up small files to at least 1 KB", () => {
     expect(bytesToKb(100)).toBe(1);
     expect(bytesToKb(0)).toBe(1);
+  });
+});
+
+describe("pickBestSizeIndex", () => {
+  test("picks the largest candidate that fits under the target", () => {
+    // candidates in JPEG-quality order: shrinking sizes
+    expect(pickBestSizeIndex([900, 620, 480, 300, 120], 500)).toBe(2);
+  });
+
+  test("falls back to the smallest candidate when nothing fits", () => {
+    expect(pickBestSizeIndex([900, 700, 650], 500)).toBe(2);
+  });
+
+  test("returns -1 with no candidates", () => {
+    expect(pickBestSizeIndex([], 500)).toBe(-1);
+  });
+
+  test("an exact fit wins", () => {
+    expect(pickBestSizeIndex([900, 500, 300], 500)).toBe(1);
   });
 });
 

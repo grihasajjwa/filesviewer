@@ -34,12 +34,17 @@ export const ResizeDownload = ({ file, kind }: ResizeDownloadProps) => {
     setBusy(true);
     const used = clampTargetKb(target);
     try {
-      await downloadResized(file.url, file.name, used, kind);
-      toast.success(
-        originalKb !== null && used >= originalKb
-          ? "Downloaded original file"
-          : `Downloaded at about ${used} KB`,
-      );
+      const savedBytes = await downloadResized(file.url, file.name, used, kind);
+      const savedKb = bytesToKb(savedBytes);
+      if (originalKb !== null && used >= originalKb) {
+        toast.success("Downloaded original file");
+      } else {
+        toast.success(
+          `Downloaded at about ${savedKb} KB${
+            originalKb !== null && savedKb > used ? ` (target was ${used} KB)` : ""
+          }`,
+        );
+      }
     } catch (error) {
       console.error("Resize download failed:", error);
       toast.error(
