@@ -2,8 +2,11 @@ import { describe, expect, test } from "bun:test";
 import {
   MAX_SCALE,
   MIN_SCALE,
+  PDF_QUALITY_FLOOR,
+  PDF_QUALITY_HIGH,
   bytesToKb,
   clampTargetKb,
+  estimateQualityForTarget,
   pickBestSizeIndex,
   refineScaleForTarget,
   withSizeSuffix,
@@ -92,6 +95,26 @@ describe("refineScaleForTarget", () => {
   test("ignores nonsense measurements", () => {
     expect(refineScaleForTarget(0.5, 0, 200)).toBe(0.5);
     expect(refineScaleForTarget(0.5, 100, 0)).toBe(0.5);
+  });
+});
+
+describe("estimateQualityForTarget", () => {
+  test("keeps full quality when it already fits the target", () => {
+    expect(estimateQualityForTarget(150, 200)).toBe(PDF_QUALITY_HIGH);
+  });
+
+  test("trades quality (not page sharpness) when over the target", () => {
+    const quality = estimateQualityForTarget(600, 200);
+    expect(quality).toBeLessThan(PDF_QUALITY_HIGH);
+    expect(quality).toBeGreaterThanOrEqual(PDF_QUALITY_FLOOR);
+  });
+
+  test("never goes below the quality floor", () => {
+    expect(estimateQualityForTarget(5000, 100)).toBe(PDF_QUALITY_FLOOR);
+  });
+
+  test("ignores nonsense measurements", () => {
+    expect(estimateQualityForTarget(0, 200)).toBe(PDF_QUALITY_HIGH);
   });
 });
 
