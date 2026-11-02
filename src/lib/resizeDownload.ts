@@ -24,8 +24,11 @@ export const MAX_JPEG_QUALITY = 0.95;
 export const MIN_SCALE = 0.1;
 export const MAX_SCALE = 1.5;
 
-/** JPEG quality used when rasterizing PDF pages. */
-const PDF_JPEG_QUALITY = 0.8;
+/** PDF raster settings: ~96 DPI first; JPEG quality is traded before DPI. */
+export const PDF_READABLE_SCALE = 1.33;
+export const PDF_QUALITY_HIGH = 0.85;
+export const PDF_QUALITY_FLOOR = 0.4;
+export const PDF_MIN_SCALE = 0.5;
 
 /**
  * Next scale after a sizing attempt. Over target → shrink by the measured
@@ -39,6 +42,16 @@ export const refineScaleForTarget = (scale: number, outKb: number, targetKb: num
     return Math.min(MAX_SCALE, scale * Math.min(1.3, Math.sqrt(targetKb / outKb)));
   }
   return scale;
+};
+
+/**
+ * JPEG quality that fits `targetKb` when full quality would produce `estHighKb`
+ * (JPEG size grows roughly with quality^1.5). Never below the quality floor:
+ * readability is protected by trading quality first and DPI only as a fallback.
+ */
+export const estimateQualityForTarget = (estHighKb: number, targetKb: number): number => {
+  if (estHighKb <= 0 || targetKb <= 0 || estHighKb <= targetKb) return PDF_QUALITY_HIGH;
+  return Math.max(PDF_QUALITY_FLOOR, PDF_QUALITY_HIGH * Math.pow((targetKb * 0.92) / estHighKb, 2 / 3));
 };
 
 /**
@@ -170,6 +183,27 @@ const configurePdfWorker = async (): Promise<void> => {
   pdfWorkerConfigured = true;
 };
 
+/** Render one page to a JPEG blob at the given scale/quality. */
+const renderPageToJpeg = async (
+  page: import("pdfjs-dist").PDFPageProxy,
+  scale: number,
+  quality: number,
+): Promise<{ jpeg: Blob; viewport: import("pdfjs-dist").PageViewport }> => {
+  const viewport = page.getViewport({ scale });
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.floor(viewport.width));
+  canvas.height = Math.max(1, Math.floor(viewport.height));
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Could not render the PDF.");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  await page.render({ canvas, canvasContext: ctx, viewport }).promise;
+  const jpeg = await toBlob(canvas, "image/jpeg", quality);
+  if (!jpeg) throw new Error("Could not render the PDF.");
+  page.cleanup();
+  return { jpeg, viewport };
+};
+
 /** Render every page to a JPEG at `scale`/`quality` and pack it into a new PDF. */
 const renderPdfToJpegPdf = async (
   doc: import("pdfjs-dist").PDFDocumentProxy,
@@ -180,32 +214,21 @@ const renderPdfToJpegPdf = async (
   const out = await PDFDocument.create();
   for (let i = 1; i <= doc.numPages; i++) {
     const page = await doc.getPage(i);
-    const viewport = page.getViewport({ scale });
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.floor(viewport.width));
-    canvas.height = Math.max(1, Math.floor(viewport.height));
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Could not render the PDF.");
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    await page.render({ canvas, canvasContext: ctx, viewport }).promise;
-    const jpeg = await toBlob(canvas, "image/jpeg", quality);
-    if (!jpeg) throw new Error("Could not render the PDF.");
+    const { jpeg, viewport } = await renderPageToJpeg(page, scale, quality);
     const img = await out.embedJpg(new Uint8Array(await jpeg.arrayBuffer()));
     const pdfPage = out.addPage([viewport.width, viewport.height]);
     pdfPage.drawImage(img, { x: 0, y: 0, width: viewport.width, height: viewport.height });
-    page.cleanup();
   }
   const saved = await out.save();
   return new Blob([saved as BlobPart], { type: "application/pdf" });
 };
 
 /**
- * Rasterize the PDF toward `targetKb` at readable quality: start from a scale
- * estimated from the measured size ratio, then refine the scale until the
- * output lands in the 85–100% band of the target. Every attempt is kept and
- * the best one that fits is returned. Returns null when rasterization fails
- * (the caller falls back to the vector scaler).
+ * Rasterize the PDF toward `targetKb` at the best quality the budget allows,
+ * the way iLovePDF-style compressors do: keep the page resolution readable
+ * (~96 DPI), trade JPEG quality for size first, and reduce the DPI only when
+ * even the lowest quality cannot fit. A one-page probe measures the real
+ * bytes-per-pixel so the first full render starts close to the target.
  */
 const rasterizePdfToTarget = async (bytes: Uint8Array, targetKb: number): Promise<Blob | null> => {
   await configurePdfWorker();
@@ -214,16 +237,53 @@ const rasterizePdfToTarget = async (bytes: Uint8Array, targetKb: number): Promis
   const task = pdfjs.getDocument({ data: bytes.slice() });
   const doc = await task.promise;
   try {
-    const originalKb = bytesToKb(bytes.byteLength);
-    let scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, Math.sqrt(targetKb / originalKb)));
+    // Probe the first page at the readable setting to learn bytes-per-pixel.
+    const probePage = await doc.getPage(1);
+    const probe = await renderPageToJpeg(probePage, PDF_READABLE_SCALE, PDF_QUALITY_HIGH);
+    const probePixels = probe.viewport.width * probe.viewport.height;
+    const bytesPerPixel = probe.jpeg.size / Math.max(1, probePixels);
+
+    let totalPixels = 0;
+    for (let i = 1; i <= doc.numPages; i++) {
+      const page = await doc.getPage(i);
+      const vp = page.getViewport({ scale: 1 });
+      totalPixels += vp.width * vp.height;
+      page.cleanup();
+    }
+
+    const estimateKb = (scale: number, quality: number): number =>
+      bytesToKb(totalPixels * scale * scale * bytesPerPixel * Math.pow(quality / PDF_QUALITY_HIGH, 1.5));
+
+    // Spend spare budget on sharpness: raise the DPI while full quality fits.
+    let scale = PDF_READABLE_SCALE;
+    while (scale < MAX_SCALE && estimateKb(scale * 1.15, PDF_QUALITY_HIGH) <= targetKb * 0.9) {
+      scale *= 1.15;
+    }
+
+    let quality = estimateQualityForTarget(estimateKb(scale, PDF_QUALITY_HIGH), targetKb);
     const candidates: { size: number; blob: Blob }[] = [];
-    for (let i = 0; i < 5; i++) {
-      const out = await renderPdfToJpegPdf(doc, scale, PDF_JPEG_QUALITY);
+    for (let i = 0; i < 4; i++) {
+      const out = await renderPdfToJpegPdf(doc, scale, quality);
       const outKb = bytesToKb(out.size);
       candidates.push({ size: out.size, blob: out });
-      const next = refineScaleForTarget(scale, outKb, targetKb);
-      if (next === scale) break;
-      scale = next;
+      if (outKb <= targetKb && outKb >= targetKb * 0.8) break; // landed on target
+      if (outKb <= targetKb) {
+        // Room left in the budget: trade it back for sharper quality.
+        const next = Math.min(PDF_QUALITY_HIGH, quality * 1.2);
+        if (next === quality) break;
+        quality = next;
+      } else {
+        const next = Math.max(PDF_QUALITY_FLOOR, quality * 0.8);
+        if (next < quality) {
+          quality = next;
+        } else {
+          // Quality is floored: reducing the DPI is the last resort.
+          const nextScale = Math.max(PDF_MIN_SCALE, refineScaleForTarget(scale, outKb, targetKb));
+          if (nextScale >= scale) break;
+          scale = nextScale;
+          quality = 0.6;
+        }
+      }
     }
     const sizes = candidates.map((c) => bytesToKb(c.size));
     return candidates[pickBestSizeIndex(sizes, targetKb)].blob;
