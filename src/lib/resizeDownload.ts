@@ -16,8 +16,30 @@ export const withSizeSuffix = (filename: string, kb: number): string => {
   return `${filename.slice(0, dot)}${suffix}${filename.slice(dot)}`;
 };
 
-/** JPEG quality ladder: start near the source quality, step down until the size fits. */
-export const JPEG_QUALITIES = [0.85, 0.7, 0.55, 0.4, 0.25, 0.15];
+/** Quality bounds for re-encoding: never mush, never bloated. */
+export const MIN_JPEG_QUALITY = 0.35;
+export const MAX_JPEG_QUALITY = 0.95;
+
+/** Scale bounds shared by the image and PDF tuners. */
+export const MIN_SCALE = 0.1;
+export const MAX_SCALE = 1.5;
+
+/** JPEG quality used when rasterizing PDF pages. */
+const PDF_JPEG_QUALITY = 0.8;
+
+/**
+ * Next scale after a sizing attempt. Over target → shrink by the measured
+ * size ratio; far under target (< 85% of it) → grow so the whole size budget
+ * is used; inside the 85–100% band → unchanged, meaning "around the target".
+ */
+export const refineScaleForTarget = (scale: number, outKb: number, targetKb: number): number => {
+  if (outKb <= 0 || targetKb <= 0) return scale;
+  if (outKb > targetKb) return Math.max(MIN_SCALE, scale * Math.sqrt(targetKb / outKb));
+  if (outKb < targetKb * 0.85) {
+    return Math.min(MAX_SCALE, scale * Math.min(1.3, Math.sqrt(targetKb / outKb)));
+  }
+  return scale;
+};
 
 /**
  * Pick the candidate closest to the target from below (largest that still fits).
@@ -74,10 +96,12 @@ const drawScaled = (bitmap: ImageBitmap, scale: number, flatten: boolean): HTMLC
 };
 
 /**
- * Re-encode the image until it lands at/below `targetKb`:
- * lower JPEG quality first (keeps full dimensions), then shrink the dimensions.
- * PNGs that cannot reach the target are flattened to JPEG (white background).
- * Returns the best candidate that fits, or the smallest one produced.
+ * Re-encode the image so it lands just under `targetKb` with the best quality:
+ * binary-search the JPEG quality at full resolution (largest quality that still
+ * fits, so the whole size budget is spent on sharpness), and only shrink the
+ * dimensions when no quality at full size can reach the target.
+ * PNGs that fit keep their native format (transparency preserved); PNGs that
+ * cannot reach the target are flattened to JPEG (white background).
  */
 export const resizeImageBlob = async (blob: Blob, targetKb: number): Promise<Blob> => {
   const target = clampTargetKb(targetKb);
@@ -96,15 +120,21 @@ export const resizeImageBlob = async (blob: Blob, targetKb: number): Promise<Blo
       }
     }
     let fit = false;
-    for (const quality of JPEG_QUALITIES) {
+    let lo = MIN_JPEG_QUALITY;
+    let hi = MAX_JPEG_QUALITY;
+    for (let step = 0; step < 7; step++) {
+      const quality = step === 0 ? hi : (lo + hi) / 2;
       const canvas = drawScaled(bitmap, scale, true);
       const jpeg = canvas ? await toBlob(canvas, "image/jpeg", quality) : null;
       if (!jpeg) continue;
       candidates.push({ size: jpeg.size, blob: jpeg });
       if (bytesToKb(jpeg.size) <= target) {
         fit = true;
-        break;
+        lo = quality;
+      } else {
+        hi = quality;
       }
+      if (hi - lo <= 0.04) break;
     }
     if (fit) break;
     scale *= 0.7;
@@ -158,7 +188,7 @@ const renderPdfToJpegPdf = async (
     if (!ctx) throw new Error("Could not render the PDF.");
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    await page.render({ canvasContext: ctx, viewport }).promise;
+    await page.render({ canvas, canvasContext: ctx, viewport }).promise;
     const jpeg = await toBlob(canvas, "image/jpeg", quality);
     if (!jpeg) throw new Error("Could not render the PDF.");
     const img = await out.embedJpg(new Uint8Array(await jpeg.arrayBuffer()));
@@ -171,8 +201,10 @@ const renderPdfToJpegPdf = async (
 };
 
 /**
- * Rasterize the PDF at a page scale that should reach `targetKb`, stepping the
- * scale down by the measured size ratio. Returns null when rasterization fails
+ * Rasterize the PDF toward `targetKb` at readable quality: start from a scale
+ * estimated from the measured size ratio, then refine the scale until the
+ * output lands in the 85–100% band of the target. Every attempt is kept and
+ * the best one that fits is returned. Returns null when rasterization fails
  * (the caller falls back to the vector scaler).
  */
 const rasterizePdfToTarget = async (bytes: Uint8Array, targetKb: number): Promise<Blob | null> => {
@@ -182,14 +214,16 @@ const rasterizePdfToTarget = async (bytes: Uint8Array, targetKb: number): Promis
   const task = pdfjs.getDocument({ data: bytes.slice() });
   const doc = await task.promise;
   try {
-    let scale = Math.min(1.5, Math.max(0.1, Math.sqrt(targetKb / bytesToKb(bytes.byteLength))));
+    const originalKb = bytesToKb(bytes.byteLength);
+    let scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, Math.sqrt(targetKb / originalKb)));
     const candidates: { size: number; blob: Blob }[] = [];
-    for (let i = 0; i < 3; i++) {
-      const out = await renderPdfToJpegPdf(doc, scale, 0.8);
+    for (let i = 0; i < 5; i++) {
+      const out = await renderPdfToJpegPdf(doc, scale, PDF_JPEG_QUALITY);
       const outKb = bytesToKb(out.size);
       candidates.push({ size: out.size, blob: out });
-      if (outKb <= targetKb) return out;
-      scale = Math.max(0.1, scale * Math.sqrt(targetKb / outKb));
+      const next = refineScaleForTarget(scale, outKb, targetKb);
+      if (next === scale) break;
+      scale = next;
     }
     const sizes = candidates.map((c) => bytesToKb(c.size));
     return candidates[pickBestSizeIndex(sizes, targetKb)].blob;
@@ -213,12 +247,14 @@ export const resizePdfBlob = async (bytes: Uint8Array, targetKb: number): Promis
   }
   let scale = Math.min(1, Math.sqrt(target / bytesToKb(bytes.byteLength)));
   let best: Blob | null = null;
-  for (let i = 0; i < 3 && scale >= 0.05; i++) {
+  for (let i = 0; i < 3; i++) {
     const out = await scalePdfBlob(bytes, scale);
     if (!best || out.size < best.size) best = out;
     const outKb = bytesToKb(out.size);
     if (outKb <= target) break;
-    scale *= Math.sqrt(target / outKb);
+    const next = refineScaleForTarget(scale, outKb, target);
+    if (next >= scale) break;
+    scale = next;
   }
   if (!best) throw new Error("Could not resize the PDF.");
   return best;
