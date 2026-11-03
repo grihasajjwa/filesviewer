@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  Archive,
   ArrowLeft,
   ChevronRight,
+  Copy,
   Database,
   Folder,
   HardDrive,
   RefreshCw,
   Search,
   Trash2,
+  Undo2,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -25,6 +28,12 @@ import { FilePreview } from "@/components/FilePreview";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import type { FileItem } from "@/components/FileManager";
 import { formatFileSize } from "@/lib/fileUtils";
+import {
+  groupDuplicateFiles,
+  profileLabel,
+  sortProfiles,
+  totalDuplicateWaste,
+} from "@/lib/adminUtils";
 import { toast } from "sonner";
 import { useConfirmDelete } from "@/components/ConfirmDeleteDialog";
 
@@ -47,6 +56,7 @@ interface AdminFileRow {
   drive_folder_link: string | null;
   folder_name: string | null;
   created_at: string;
+  deleted_at: string | null;
 }
 
 interface AdminShareRow {
@@ -88,26 +98,36 @@ const Admin = () => {
   });
   const [creatingUser, setCreatingUser] = useState(false);
   const { confirmDelete, dialog: deleteDialog } = useConfirmDelete({ allowSkip: true });
+  const [trashRows, setTrashRows] = useState<AdminFileRow[]>([]);
+  const [viewMode, setViewMode] = useState<"users" | "trash" | "duplicates">("users");
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [profilesRes, filesRes, sharesRes] = await Promise.all([
-      supabase.from("profiles").select("id, email, username, display_name").order("created_at"),
+    const fileColumns =
+      "id, user_id, name, type, size, url, thumbnail, drive_link, drive_folder_link, folder_name, created_at, deleted_at";
+    const [profilesRes, filesRes, trashRes, sharesRes] = await Promise.all([
+      supabase.from("profiles").select("id, email, username, display_name"),
       supabase
         .from("files")
-        .select(
-          "id, user_id, name, type, size, url, thumbnail, drive_link, drive_folder_link, folder_name, created_at",
-        )
+        .select(fileColumns)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false }),
+      supabase
+        .from("files")
+        .select(fileColumns)
+        .not("deleted_at", "is", null)
+        .order("deleted_at", { ascending: false }),
       supabase.from("file_user_shares").select("file_id, shared_with_user_id"),
     ]);
 
     if (profilesRes.error) toast.error(profilesRes.error.message);
     if (filesRes.error) toast.error(filesRes.error.message);
+    if (trashRes.error) toast.error(trashRes.error.message);
     if (sharesRes.error) toast.error(sharesRes.error.message);
 
-    setProfiles((profilesRes.data as Profile[]) ?? []);
+    setProfiles(sortProfiles((profilesRes.data as Profile[]) ?? []));
     setRows((filesRes.data as AdminFileRow[]) ?? []);
+    setTrashRows((trashRes.data as AdminFileRow[]) ?? []);
     setShares((sharesRes.data as AdminShareRow[]) ?? []);
     setLoading(false);
   }, []);
@@ -187,20 +207,45 @@ const Admin = () => {
 
   const totalBytes = rows.reduce((sum, r) => sum + (Number(r.size) || 0), 0);
 
+  const duplicateGroups = useMemo(() => groupDuplicateFiles(rows), [rows]);
+  const dupWaste = useMemo(() => totalDuplicateWaste(duplicateGroups), [duplicateGroups]);
+
   const ownerNameById = useMemo(
-    () =>
-      new Map(profiles.map((p) => [p.id, p.username || p.display_name || "user"])),
+    () => new Map(profiles.map((p) => [p.id, profileLabel(p)])),
     [profiles],
   );
 
-  const handleDelete = async (fileId: string) => {
+  const moveToTrash = async (fileId: string) => {
+    const { error } = await supabase
+      .from("files")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", fileId);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Moved to Trash");
+    setSelectedFile((current) => (current?.id === fileId ? null : current));
+    load();
+  };
+
+  const handleRestore = async (fileId: string) => {
+    const { error } = await supabase.from("files").update({ deleted_at: null }).eq("id", fileId);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Restored from Trash");
+    load();
+  };
+
+  const handleDeleteForever = async (fileId: string) => {
     const { error } = await supabase.from("files").delete().eq("id", fileId);
     if (error) {
       toast.error(error.message);
       return;
     }
-    toast.success("File deleted");
-    setSelectedFile((current) => (current?.id === fileId ? null : current));
+    toast.success("Permanently deleted");
     load();
   };
 
@@ -315,7 +360,31 @@ const Admin = () => {
       </header>
 
       <main className="p-3 sm:p-6 space-y-4 sm:space-y-6">
-        {!openProfile ? (
+        {!openProfile && (
+          <div className="flex gap-2 flex-wrap">
+            {([
+              { id: "users" as const, label: "Users", icon: Users, count: profiles.length },
+              { id: "trash" as const, label: "Trash", icon: Archive, count: trashRows.length },
+              { id: "duplicates" as const, label: "Duplicates", icon: Copy, count: duplicateGroups.length },
+            ]).map(({ id, label, icon: Icon, count }) => (
+              <Button
+                key={id}
+                variant={viewMode === id ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setViewMode(id);
+                  setSelectedFile(null);
+                }}
+              >
+                <Icon className="w-4 h-4 sm:mr-2" />
+                {label}
+                <span className="text-xs opacity-80">({count})</span>
+              </Button>
+            ))}
+          </div>
+        )}
+
+        {!openProfile && viewMode === "users" && (
           <>
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
               <Card className="p-4 flex items-center gap-3">
@@ -443,7 +512,109 @@ const Admin = () => {
               </div>
             )}
           </>
-        ) : (
+        )}
+
+        {!openProfile && viewMode === "trash" && (
+          <Card className="divide-y divide-border">
+            {trashRows.length === 0 ? (
+              <p className="p-4 text-sm text-muted-foreground">Trash is empty.</p>
+            ) : (
+              trashRows.map((row) => (
+                <div
+                  key={row.id}
+                  className={`flex items-center gap-2 p-3 ${
+                    selectedFile?.id === row.id ? "bg-accent" : ""
+                  }`}
+                >
+                  <button
+                    className="flex-1 text-left min-w-0"
+                    onClick={() => setSelectedFile(toFileItem(row))}
+                  >
+                    <p className="text-sm font-medium truncate">{row.name}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      {ownerNameById.get(row.user_id) ?? "user"} ·{" "}
+                      {formatFileSize(Number(row.size) || 0)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Deleted {new Date(row.deleted_at ?? "").toLocaleString()}
+                    </p>
+                  </button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    aria-label={`Restore ${row.name}`}
+                    onClick={() => handleRestore(row.id)}
+                  >
+                    <Undo2 className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Restore</span>
+                  </Button>
+                  {showDelete && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Delete forever ${row.name}`}
+                      onClick={() => confirmDelete(() => handleDeleteForever(row.id), row.name)}
+                    >
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </Button>
+                  )}
+                </div>
+              ))
+            )}
+          </Card>
+        )}
+
+        {!openProfile && viewMode === "duplicates" && (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Same name and same size found across all users' folders.{" "}
+              {duplicateGroups.length > 0 &&
+                `Total wasted space: ${formatFileSize(dupWaste)}. The first copy is marked "Keep".`}
+            </p>
+            {duplicateGroups.length === 0 && (
+              <Card className="p-4">
+                <p className="text-sm text-muted-foreground">No duplicate files found.</p>
+              </Card>
+            )}
+            {duplicateGroups.map((group) => (
+              <Card key={group.key} className="p-4 space-y-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Copy className="w-4 h-4 text-primary shrink-0" />
+                  <p className="text-sm font-medium text-foreground truncate flex-1">{group.name}</p>
+                  <Badge variant="secondary">{group.files.length} copies</Badge>
+                  <Badge variant="outline">{formatFileSize(group.wastedBytes)} wasted</Badge>
+                </div>
+                <div className="divide-y divide-border">
+                  {group.files.map((row, index) => (
+                    <div key={row.id} className="flex items-center gap-2 py-2">
+                      <p className="text-xs text-muted-foreground truncate min-w-0 flex-1">
+                        {ownerNameById.get(row.user_id) ?? "user"} ·{" "}
+                        {formatFileSize(Number(row.size) || 0)} ·{" "}
+                        {new Date(row.created_at).toLocaleDateString()}
+                      </p>
+                      {index === 0 ? (
+                        <Badge variant="secondary">Keep</Badge>
+                      ) : (
+                        showDelete && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Trash duplicate ${row.id}`}
+                            onClick={() => confirmDelete(() => moveToTrash(row.id), row.name)}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        )
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {openProfile && (
           <>
             <div className="flex items-center gap-3 flex-wrap">
               <Button
@@ -520,7 +691,7 @@ const Admin = () => {
                           variant="ghost"
                           size="icon"
                           aria-label={`Delete ${row.name}`}
-                          onClick={() => confirmDelete(() => handleDelete(row.id), row.name)}
+                          onClick={() => confirmDelete(() => moveToTrash(row.id), row.name)}
                         >
                           <Trash2 className="w-4 h-4 text-destructive" />
                         </Button>
@@ -535,7 +706,7 @@ const Admin = () => {
                   <FilePreview
                     key={selectedFile?.id ?? "none"}
                     file={selectedFile}
-                    onDelete={showDelete && selectedFile?.id && rows.find((row) => row.id === selectedFile.id)?.user_id === userId ? handleDelete : undefined}
+                    onDelete={showDelete && selectedFile?.id && rows.find((row) => row.id === selectedFile.id)?.user_id === userId ? moveToTrash : undefined}
                     isAdmin
                     isLoading={false}
                   />

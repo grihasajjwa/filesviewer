@@ -139,6 +139,7 @@ export const FileManager = () => {
       const { data, error } = await supabase
         .from('files')
         .select('*')
+        .is('deleted_at', null)
         .or('folder_name.is.null,type.eq.folder')
         .order('created_at', { ascending: false });
 
@@ -235,6 +236,7 @@ export const FileManager = () => {
         const { data: folderFiles, error: folderFilesError } = await supabase
             .from('files')
             .select('*')
+            .is('deleted_at', null)
             .eq('user_id', userId)
             .in('folder_name', folderNames)
             .neq('type', 'folder')
@@ -277,8 +279,9 @@ export const FileManager = () => {
       if (incomingShares && incomingShares.length > 0) {
         const sharedIds = incomingShares.map((s) => s.file_id);
         const { data: sharedRows } = await supabase
-          .from('files')
+            .from('files')
           .select('*')
+          .is('deleted_at', null)
           .in('id', sharedIds);
 
         const sharedByMap = new Map(
@@ -434,16 +437,16 @@ export const FileManager = () => {
     try {
       const { error } = await supabase
         .from('files')
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq('id', fileId);
 
       if (error) {
         console.error('Error deleting file:', error);
-        toast.error('Failed to delete file.');
+        toast.error('Failed to move file to Trash.');
         return;
       }
 
-      toast.success('File deleted successfully.');
+      toast.success('File moved to Trash. Restore it from the Dashboard.');
 
       // Refresh the file list and reset the right-side viewer
       if (user) {
