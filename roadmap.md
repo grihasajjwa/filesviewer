@@ -1,4 +1,8 @@
 - [x] Fix mobile file picking in personal and admin folder uploads; native chooser verified in mobile and desktop browser checks.
 - [x] Convert HEIC uploads to JPG; tests passed and real HEIC decoded into a visible JPEG.
 - [x] Verify upload selection and report authenticated testing limitations.
+- [x] Sort /admin users alphabetically by username (fallback display name/email).
+- [x] Add admin Trash: deletes are restorable soft deletes; Trash tab restores or permanently deletes.
+- [x] Add Duplicates tab grouping same name+size files across all users with wasted-space totals.
 - [ ] Verify uploads on a physical phone inside signed-in user/admin folders — blocked by external unmanaged authentication and no physical device access.
+- [ ] Verify Trash and Duplicates tabs with a signed-in admin session — blocked by external unmanaged authentication.
