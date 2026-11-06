@@ -240,11 +240,31 @@ const Admin = () => {
   };
 
   const handleDeleteForever = async (fileId: string) => {
-    const { error } = await supabase.from("files").delete().eq("id", fileId);
+    const { data: meta } = await supabase
+      .from("files")
+      .select("file_path, bucket_name")
+      .eq("id", fileId)
+      .maybeSingle();
+    const { data: deleted, error } = await supabase
+      .from("files")
+      .delete()
+      .eq("id", fileId)
+      .select("id");
     if (error) {
       toast.error(error.message);
       return;
     }
+    if (!deleted || deleted.length === 0) {
+      toast.error("Could not delete this file. You may not have permission.");
+      return;
+    }
+    if (meta?.file_path && !/^https?:/i.test(meta.file_path)) {
+      const { error: storageError } = await supabase.storage
+        .from(meta.bucket_name || "files")
+        .remove([meta.file_path]);
+      if (storageError) console.warn("Storage cleanup failed:", storageError.message);
+    }
+    setSelectedFile((current) => (current?.id === fileId ? null : current));
     toast.success("Permanently deleted");
     load();
   };
