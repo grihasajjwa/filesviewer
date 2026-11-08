@@ -4,5 +4,6 @@
 - [x] Sort /admin users alphabetically by username (fallback display name/email).
 - [x] Add admin Trash: deletes are restorable soft deletes; Trash tab restores or permanently deletes.
 - [x] Add Duplicates tab grouping same name+size files across all users with wasted-space totals.
+- [ ] Add admin-wide All files tab with keyword/username search, size sorting, and best-quality compression replacement.
 - [ ] Verify uploads on a physical phone inside signed-in user/admin folders — blocked by external unmanaged authentication and no physical device access.
 - [ ] Verify Trash and Duplicates tabs with a signed-in admin session — blocked by external unmanaged authentication.

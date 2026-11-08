@@ -4,3 +4,4 @@
 
 # Data lifecycle
 - File deletion is a soft delete: every admin/user delete writes `files.deleted_at` instead of removing the row; `files` queries outside the admin Trash tab must filter `.is('deleted_at', null)`. Permanent removal only happens from the admin Trash view.
+- Admin-wide file search and sorting use the existing active-file and profile data; compressed replacements stage a new storage object, update the file record, then remove the old object so failures preserve the original.
