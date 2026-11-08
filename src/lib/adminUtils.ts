@@ -64,3 +64,35 @@ export const groupDuplicateFiles = <T extends FileRowLike>(rows: T[]): Duplicate
 
 export const totalDuplicateWaste = <T extends FileRowLike>(groups: DuplicateGroup<T>[]): number =>
   groups.reduce((sum, group) => sum + group.wastedBytes, 0);
+
+export interface AdminSearchFile {
+  name: string;
+  type: string;
+  user_id: string;
+}
+
+/** Every term must match a filename/type or an owner's account detail. */
+export const searchAdminFiles = <T extends AdminSearchFile>(
+  rows: T[],
+  profiles: ProfileLike[],
+  query: string,
+): T[] => {
+  const terms = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return rows;
+  const ownerById = new Map(profiles.map((profile) => [profile.id, profile]));
+
+  return rows.filter((row) => {
+    const fileText = `${row.name} ${row.type}`.toLocaleLowerCase();
+    const owner = ownerById.get(row.user_id);
+    const ownerText = `${owner?.username ?? ""} ${owner?.display_name ?? ""} ${owner?.email ?? ""}`.toLocaleLowerCase();
+    return terms.every((term) => fileText.includes(term) || ownerText.includes(term));
+  });
+};
+
+export const sortFilesBySize = <T extends FileRowLike>(rows: T[], direction: "asc" | "desc"): T[] =>
+  [...rows].sort((a, b) =>
+    (direction === "asc" ? a.size - b.size : b.size - a.size) || a.name.localeCompare(b.name),
+  );
+
+export const canReplaceWithCompressedSize = (originalBytes: number, compressedBytes: number): boolean =>
+  Number.isFinite(originalBytes) && Number.isFinite(compressedBytes) && compressedBytes > 0 && compressedBytes < originalBytes;

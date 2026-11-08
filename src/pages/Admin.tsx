@@ -2,14 +2,20 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Archive,
+  ArrowDownWideNarrow,
   ArrowLeft,
+  ArrowUpWideNarrow,
   ChevronRight,
   Copy,
   Database,
+  FileText,
   Folder,
   HardDrive,
+  Image as ImageIcon,
+  Loader2,
   RefreshCw,
   Search,
+  Shrink,
   Trash2,
   Undo2,
   UserPlus,
@@ -23,17 +29,32 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { AdminPanel } from "@/components/AdminPanel";
 import { FilePreview } from "@/components/FilePreview";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import type { FileItem } from "@/components/FileManager";
 import { formatFileSize } from "@/lib/fileUtils";
 import {
+  canReplaceWithCompressedSize,
   groupDuplicateFiles,
   profileLabel,
+  searchAdminFiles,
+  sortFilesBySize,
   sortProfiles,
   totalDuplicateWaste,
 } from "@/lib/adminUtils";
+import { resizeImageBlob, resizePdfBlob, bytesToKb } from "@/lib/resizeDownload";
+import { getFileExtension } from "@/lib/fileUtils";
 import { toast } from "sonner";
 import { useConfirmDelete } from "@/components/ConfirmDeleteDialog";
 
@@ -80,6 +101,22 @@ const toFileItem = (row: AdminFileRow): FileItem => ({
 
 const megabytes = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 
+const fetchAllPages = async <T,>(
+  fetchPage: (from: number, to: number) => PromiseLike<{
+    data: T[] | null;
+    error: { message: string } | null;
+  }>,
+): Promise<{ data: T[] | null; error: { message: string } | null }> => {
+  const allRows: T[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await fetchPage(from, from + 999);
+    if (error) return { data: null, error };
+    const page = data ?? [];
+    allRows.push(...page);
+    if (page.length < 1000) return { data: allRows, error: null };
+  }
+};
+
 const Admin = () => {
   const { isAdmin, loading: roleLoading, userId } = useUserRole();
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -91,6 +128,10 @@ const Admin = () => {
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
   const [showDelete, setShowDelete] = useState(false);
   const [fileSearch, setFileSearch] = useState("");
+  const [allFileSearch, setAllFileSearch] = useState("");
+  const [fileSortDirection, setFileSortDirection] = useState<"asc" | "desc">("desc");
+  const [compressingFileId, setCompressingFileId] = useState<string | null>(null);
+  const [pendingCompression, setPendingCompression] = useState<AdminFileRow | null>(null);
   const [createUserForm, setCreateUserForm] = useState({
     email: "",
     password: "",
@@ -99,25 +140,35 @@ const Admin = () => {
   const [creatingUser, setCreatingUser] = useState(false);
   const { confirmDelete, dialog: deleteDialog } = useConfirmDelete({ allowSkip: true });
   const [trashRows, setTrashRows] = useState<AdminFileRow[]>([]);
-  const [viewMode, setViewMode] = useState<"users" | "trash" | "duplicates">("users");
+  const [viewMode, setViewMode] = useState<"users" | "allfiles" | "trash" | "duplicates">("users");
 
   const load = useCallback(async () => {
     setLoading(true);
     const fileColumns =
       "id, user_id, name, type, size, url, thumbnail, drive_link, drive_folder_link, folder_name, created_at, deleted_at";
     const [profilesRes, filesRes, trashRes, sharesRes] = await Promise.all([
-      supabase.from("profiles").select("id, email, username, display_name"),
-      supabase
-        .from("files")
-        .select(fileColumns)
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("files")
-        .select(fileColumns)
-        .not("deleted_at", "is", null)
-        .order("deleted_at", { ascending: false }),
-      supabase.from("file_user_shares").select("file_id, shared_with_user_id"),
+      fetchAllPages<Profile>((from, to) =>
+        supabase.from("profiles").select("id, email, username, display_name").range(from, to),
+      ),
+      fetchAllPages<AdminFileRow>((from, to) =>
+        supabase
+          .from("files")
+          .select(fileColumns)
+          .is("deleted_at", null)
+          .order("created_at", { ascending: false })
+          .range(from, to),
+      ),
+      fetchAllPages<AdminFileRow>((from, to) =>
+        supabase
+          .from("files")
+          .select(fileColumns)
+          .not("deleted_at", "is", null)
+          .order("deleted_at", { ascending: false })
+          .range(from, to),
+      ),
+      fetchAllPages<AdminShareRow>((from, to) =>
+        supabase.from("file_user_shares").select("file_id, shared_with_user_id").range(from, to),
+      ),
     ]);
 
     if (profilesRes.error) toast.error(profilesRes.error.message);
@@ -206,6 +257,109 @@ const Admin = () => {
   }, [fileSearch, openFiles]);
 
   const totalBytes = rows.reduce((sum, r) => sum + (Number(r.size) || 0), 0);
+
+  const visibleAllFiles = useMemo(
+    () => sortFilesBySize(searchAdminFiles(rows, profiles, allFileSearch), fileSortDirection),
+    [rows, profiles, allFileSearch, fileSortDirection],
+  );
+
+  const canCompressFile = (row: AdminFileRow) => {
+    const extension = getFileExtension(row.name);
+    return row.type === "pdf"
+      ? extension === "pdf"
+      : row.type === "image" && ["jpg", "jpeg", "png", "webp"].includes(extension);
+  };
+
+  const compressAndReplace = async (row: AdminFileRow) => {
+    if (compressingFileId) return;
+    setCompressingFileId(row.id);
+    let uploadedPath: string | null = null;
+    let bucketName = "files";
+
+    try {
+      const { data: metadata, error: metadataError } = await supabase
+        .from("files")
+        .select("file_path, bucket_name")
+        .eq("id", row.id)
+        .maybeSingle();
+      if (metadataError) throw metadataError;
+      if (!metadata?.file_path || /^https?:/i.test(metadata.file_path) || metadata.bucket_name !== "files") {
+        throw new Error("This item is not a stored file and cannot be compressed here.");
+      }
+      bucketName = metadata.bucket_name;
+
+      const { data: original, error: downloadError } = await supabase.storage
+        .from(bucketName)
+        .download(metadata.file_path);
+      if (downloadError || !original) throw downloadError ?? new Error("Could not load the original file.");
+
+      const targetKb = Math.max(1, Math.floor(bytesToKb(original.size) * 0.85));
+      const compressed = row.type === "pdf"
+        ? await resizePdfBlob(new Uint8Array(await original.arrayBuffer()), targetKb)
+        : await resizeImageBlob(original, targetKb);
+      if (!canReplaceWithCompressedSize(original.size, compressed.size)) {
+        throw new Error("This file cannot be made smaller without reducing quality further.");
+      }
+
+      const extensionForMime: Record<string, string> = {
+        "application/pdf": ".pdf",
+        "image/jpeg": ".jpg",
+        "image/png": ".png",
+      };
+      const nextExtension = extensionForMime[compressed.type] ?? `.${getFileExtension(row.name)}`;
+      const oldExtension = /\.[^/.]+$/.exec(metadata.file_path)?.[0] ?? "";
+      const storageBase = oldExtension
+        ? metadata.file_path.slice(0, -oldExtension.length)
+        : metadata.file_path;
+      uploadedPath = `${storageBase}.optimized-${Date.now()}-${Math.random().toString(36).slice(2, 8)}${nextExtension}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from(bucketName)
+        .upload(uploadedPath, compressed, { contentType: compressed.type, upsert: false });
+      if (uploadError) throw uploadError;
+
+      const { data: publicData } = supabase.storage.from(bucketName).getPublicUrl(uploadedPath);
+      const oldNameExtension = /\.[^/.]+$/.exec(row.name)?.[0] ?? "";
+      const nextName = oldNameExtension
+        ? `${row.name.slice(0, -oldNameExtension.length)}${nextExtension}`
+        : `${row.name}${nextExtension}`;
+      const { data: updated, error: updateError } = await supabase
+        .from("files")
+        .update({
+          file_path: uploadedPath,
+          bucket_name: bucketName,
+          url: publicData.publicUrl,
+          size: compressed.size,
+          name: nextName,
+          ...(row.type === "image" ? { thumbnail: publicData.publicUrl } : {}),
+        })
+        .eq("id", row.id)
+        .select("id")
+        .maybeSingle();
+
+      if (updateError) throw updateError;
+      if (!updated) throw new Error("The file record was not updated; the original remains unchanged.");
+
+      const { error: oldFileError } = await supabase.storage.from(bucketName).remove([metadata.file_path]);
+      if (oldFileError) {
+        toast.warning("The compressed file replaced the original, but the old storage copy could not be removed.");
+      } else {
+        toast.success(`${nextName} compressed and replaced (${formatFileSize(compressed.size)}).`);
+      }
+      setRows((current) => current.map((file) => file.id === row.id
+        ? { ...file, name: nextName, url: publicData.publicUrl, size: compressed.size }
+        : file));
+      await load();
+    } catch (error) {
+      if (uploadedPath) {
+        const { error: cleanupError } = await supabase.storage.from(bucketName).remove([uploadedPath]);
+        if (cleanupError) console.warn("Could not clean up an unused compressed copy:", cleanupError.message);
+      }
+      toast.error(error instanceof Error ? error.message : "Could not compress and replace this file.");
+    } finally {
+      setCompressingFileId(null);
+    }
+  };
 
   const duplicateGroups = useMemo(() => groupDuplicateFiles(rows), [rows]);
   const dupWaste = useMemo(() => totalDuplicateWaste(duplicateGroups), [duplicateGroups]);
@@ -384,6 +538,7 @@ const Admin = () => {
           <div className="flex gap-2 flex-wrap">
             {([
               { id: "users" as const, label: "Users", icon: Users, count: profiles.length },
+              { id: "allfiles" as const, label: "All files", icon: FileText, count: rows.length },
               { id: "trash" as const, label: "Trash", icon: Archive, count: trashRows.length },
               { id: "duplicates" as const, label: "Duplicates", icon: Copy, count: duplicateGroups.length },
             ]).map(({ id, label, icon: Icon, count }) => (
@@ -532,6 +687,73 @@ const Admin = () => {
               </div>
             )}
           </>
+        )}
+
+        {!openProfile && viewMode === "allfiles" && (
+          <section className="space-y-3" aria-label="All files">
+            <div className="flex items-center gap-2">
+              <div className="relative min-w-0 flex-1">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={allFileSearch}
+                  onChange={(event) => setAllFileSearch(event.target.value)}
+                  placeholder="Search files or username"
+                  className="pl-9"
+                  aria-label="Search all files by keyword or username"
+                />
+              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label={fileSortDirection === "desc" ? "Sort smallest files first" : "Sort largest files first"}
+                title={fileSortDirection === "desc" ? "Largest files first" : "Smallest files first"}
+                onClick={() => setFileSortDirection((direction) => direction === "desc" ? "asc" : "desc")}
+              >
+                {fileSortDirection === "desc"
+                  ? <ArrowDownWideNarrow className="w-4 h-4" />
+                  : <ArrowUpWideNarrow className="w-4 h-4" />}
+              </Button>
+              <span className="text-xs text-muted-foreground whitespace-nowrap">{visibleAllFiles.length} files</span>
+            </div>
+
+            <Card className="divide-y divide-border">
+              {loading ? (
+                <div className="p-4 space-y-3"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></div>
+              ) : visibleAllFiles.length === 0 ? (
+                <p className="p-4 text-sm text-muted-foreground">
+                  {allFileSearch ? "No files match that search." : "No files found."}
+                </p>
+              ) : visibleAllFiles.map((row) => {
+                const eligible = canCompressFile(row) && Number(row.size) > 0;
+                return (
+                  <div key={row.id} className="flex items-center gap-3 p-3 sm:px-4">
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
+                      {row.type === "image"
+                        ? <ImageIcon className="h-4 w-4 shrink-0 text-primary" />
+                        : <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-foreground">{row.name}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {ownerNameById.get(row.user_id) ?? "user"} · {formatFileSize(Number(row.size) || 0)} · {new Date(row.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!eligible || compressingFileId !== null}
+                      title={eligible ? "Compress with best available quality and replace the stored file" : "Only stored PDF, JPG, PNG, or WebP files can be compressed"}
+                      onClick={() => setPendingCompression(row)}
+                      className="shrink-0"
+                    >
+                      <Shrink className="h-4 w-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Compress & replace</span>
+                    </Button>
+                  </div>
+                );
+              })}
+            </Card>
+          </section>
         )}
 
         {!openProfile && viewMode === "trash" && (
@@ -736,6 +958,36 @@ const Admin = () => {
           </>
         )}
       </main>
+      <AlertDialog open={pendingCompression !== null} onOpenChange={(open) => !open && setPendingCompression(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Compress and replace this file?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingCompression && (
+                <>
+                  <span className="font-medium text-foreground">{pendingCompression.name}</span> will be compressed using the existing best-quality settings, then replaced with the smaller copy. The current copy stays available unless the replacement succeeds.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={compressingFileId !== null}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={compressingFileId !== null || pendingCompression === null}
+              onClick={(event) => {
+                event.preventDefault();
+                const row = pendingCompression;
+                setPendingCompression(null);
+                if (row) void compressAndReplace(row);
+              }}
+            >
+              {compressingFileId
+                ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Compressing…</>
+                : "Compress & replace"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {deleteDialog}
     </div>
   );

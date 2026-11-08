@@ -1,7 +1,10 @@
 import { expect, test } from "bun:test";
 import {
+  canReplaceWithCompressedSize,
   groupDuplicateFiles,
   profileLabel,
+  searchAdminFiles,
+  sortFilesBySize,
   sortProfiles,
   totalDuplicateWaste,
 } from "../src/lib/adminUtils";
@@ -41,4 +44,33 @@ test("Unique files produce no duplicate groups", () => {
     { id: "b", name: "two.pdf", size: 200 },
   ]);
   expect(groups).toHaveLength(0);
+});
+
+test("All-files search matches filename keywords and the owner's username", () => {
+  const rows = [
+    { id: "a", name: "Quarterly report.pdf", type: "pdf", user_id: "u1", size: 200 },
+    { id: "b", name: "Vacation.jpg", type: "image", user_id: "u2", size: 500 },
+  ];
+  const profiles = [
+    { id: "u1", username: "mira", email: "mira@example.com" },
+    { id: "u2", username: "alex", email: "alex@example.com" },
+  ];
+  expect(searchAdminFiles(rows, profiles, "quarterly pdf").map((row) => row.id)).toEqual(["a"]);
+  expect(searchAdminFiles(rows, profiles, "alex").map((row) => row.id)).toEqual(["b"]);
+});
+
+test("All-files size sorting supports smallest-first and largest-first", () => {
+  const rows = [
+    { id: "large", name: "large.pdf", size: 900 },
+    { id: "small", name: "small.pdf", size: 100 },
+    { id: "medium", name: "medium.pdf", size: 500 },
+  ];
+  expect(sortFilesBySize(rows, "asc").map((row) => row.id)).toEqual(["small", "medium", "large"]);
+  expect(sortFilesBySize(rows, "desc").map((row) => row.id)).toEqual(["large", "medium", "small"]);
+});
+
+test("Compression replacement is allowed only when the new file is smaller", () => {
+  expect(canReplaceWithCompressedSize(516_000, 200_000)).toBe(true);
+  expect(canReplaceWithCompressedSize(516_000, 516_000)).toBe(false);
+  expect(canReplaceWithCompressedSize(516_000, 600_000)).toBe(false);
 });
