@@ -29,6 +29,16 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { AdminPanel } from "@/components/AdminPanel";
 import { FilePreview } from "@/components/FilePreview";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -121,6 +131,7 @@ const Admin = () => {
   const [allFileSearch, setAllFileSearch] = useState("");
   const [fileSortDirection, setFileSortDirection] = useState<"asc" | "desc">("desc");
   const [compressingFileId, setCompressingFileId] = useState<string | null>(null);
+  const [pendingCompression, setPendingCompression] = useState<AdminFileRow | null>(null);
   const [createUserForm, setCreateUserForm] = useState({
     email: "",
     password: "",
@@ -732,13 +743,11 @@ const Admin = () => {
                       size="sm"
                       disabled={!eligible || compressingFileId !== null}
                       title={eligible ? "Compress with best available quality and replace the stored file" : "Only stored PDF, JPG, PNG, or WebP files can be compressed"}
-                      onClick={() => void compressAndReplace(row)}
+                      onClick={() => setPendingCompression(row)}
                       className="shrink-0"
                     >
-                      {compressingFileId === row.id
-                        ? <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />
-                        : <Shrink className="h-4 w-4 sm:mr-2" />}
-                      <span className="hidden sm:inline">{compressingFileId === row.id ? "Compressing…" : "Compress & replace"}</span>
+                      <Shrink className="h-4 w-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Compress & replace</span>
                     </Button>
                   </div>
                 );
@@ -949,6 +958,36 @@ const Admin = () => {
           </>
         )}
       </main>
+      <AlertDialog open={pendingCompression !== null} onOpenChange={(open) => !open && setPendingCompression(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Compress and replace this file?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingCompression && (
+                <>
+                  <span className="font-medium text-foreground">{pendingCompression.name}</span> will be compressed using the existing best-quality settings, then replaced with the smaller copy. The current copy stays available unless the replacement succeeds.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={compressingFileId !== null}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={compressingFileId !== null || pendingCompression === null}
+              onClick={(event) => {
+                event.preventDefault();
+                const row = pendingCompression;
+                setPendingCompression(null);
+                if (row) void compressAndReplace(row);
+              }}
+            >
+              {compressingFileId
+                ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Compressing…</>
+                : "Compress & replace"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {deleteDialog}
     </div>
   );
