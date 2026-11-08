@@ -91,6 +91,22 @@ const toFileItem = (row: AdminFileRow): FileItem => ({
 
 const megabytes = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 
+const fetchAllPages = async <T,>(
+  fetchPage: (from: number, to: number) => PromiseLike<{
+    data: T[] | null;
+    error: { message: string } | null;
+  }>,
+): Promise<{ data: T[] | null; error: { message: string } | null }> => {
+  const allRows: T[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await fetchPage(from, from + 999);
+    if (error) return { data: null, error };
+    const page = data ?? [];
+    allRows.push(...page);
+    if (page.length < 1000) return { data: allRows, error: null };
+  }
+};
+
 const Admin = () => {
   const { isAdmin, loading: roleLoading, userId } = useUserRole();
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -120,18 +136,28 @@ const Admin = () => {
     const fileColumns =
       "id, user_id, name, type, size, url, thumbnail, drive_link, drive_folder_link, folder_name, created_at, deleted_at";
     const [profilesRes, filesRes, trashRes, sharesRes] = await Promise.all([
-      supabase.from("profiles").select("id, email, username, display_name"),
-      supabase
-        .from("files")
-        .select(fileColumns)
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("files")
-        .select(fileColumns)
-        .not("deleted_at", "is", null)
-        .order("deleted_at", { ascending: false }),
-      supabase.from("file_user_shares").select("file_id, shared_with_user_id"),
+      fetchAllPages<Profile>((from, to) =>
+        supabase.from("profiles").select("id, email, username, display_name").range(from, to),
+      ),
+      fetchAllPages<AdminFileRow>((from, to) =>
+        supabase
+          .from("files")
+          .select(fileColumns)
+          .is("deleted_at", null)
+          .order("created_at", { ascending: false })
+          .range(from, to),
+      ),
+      fetchAllPages<AdminFileRow>((from, to) =>
+        supabase
+          .from("files")
+          .select(fileColumns)
+          .not("deleted_at", "is", null)
+          .order("deleted_at", { ascending: false })
+          .range(from, to),
+      ),
+      fetchAllPages<AdminShareRow>((from, to) =>
+        supabase.from("file_user_shares").select("file_id, shared_with_user_id").range(from, to),
+      ),
     ]);
 
     if (profilesRes.error) toast.error(profilesRes.error.message);
